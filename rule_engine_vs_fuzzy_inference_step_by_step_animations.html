@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Rule Engine vs Fuzzy Inference — Step‑by‑Step Animations</title>
+  <!-- Animation library: anime.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+  <style>
+    :root{
+      /* --- Base --- */
+      --bg:#0f172a;          /* slate-900 */
+      --panel:#111827;       /* gray-900 */
+      --muted:#6b7280;       /* slate-500/600 mix */
+      --text:#e5e7eb;        /* gray-200 */
+      --chip:#1f2937;        /* gray-800 */
+      --card:#0b1224;        /* custom */
+
+      /* --- USJ-inspired brand palette (approx) --- */
+      --usj-red:#c62828;     /* close to the red of the mark */
+      --usj-orange:#f59e0b;  /* warm orange from the mark */
+      --usj-black:#0b0b0b;   
+      --usj-gray:#6e6e6e;
+
+      /* Map accents to USJ look */
+      --accent:var(--usj-orange);
+      --accent-2:#cbd5e1;
+      --accent-3:#34d399;
+      --good:#10b981;        /* green-500 */
+      --warn:#f59e0b;        /* amber-500 */
+      --bad:#ef4444;         /* red-500 */
+    }
+    *{box-sizing:border-box}
+    html,body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background:linear-gradient(120deg,#0b0f18 0%,#121826 65%,#0b0f18 100%);
+      color:var(--text);
+    }
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji", "Segoe UI Emoji";
+      background:linear-gradient(120deg,#0b1224 0%,#101837 70%,#0b1224 100%);
+      color:var(--text);
+    }
+    header{
+      padding:24px 20px 0; text-align:center;
+    }
+    h1{margin:0 0 6px; font-size: clamp(22px, 2.6vw, 36px)}
+    p.lead{margin:0 auto; max-width:980px; color:#cbd5e1}
+
+    .grid{
+      display:grid; gap:20px; padding:22px; grid-template-columns:1fr; max-width:1200px; margin:14px auto 60px;
+    }
+    @media(min-width:980px){
+      .grid{grid-template-columns:1fr 1fr}
+    }
+
+    .card{background:rgba(17,24,39,.7); border:1px solid rgba(148,163,184,.15); border-radius:18px; box-shadow:0 12px 30px rgba(0,0,0,.35); overflow:hidden}
+    .card header{padding:14px 16px; text-align:left; background:linear-gradient(180deg, rgba(56,189,248,.15), transparent); border-bottom:1px solid rgba(148,163,184,.12)}
+    .card h2{margin:0; font-size:19px}
+    .card main{padding:14px 16px 18px}
+
+    .controls{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0 14px}
+    button{appearance:none; border-radius:12px; border:1px solid rgba(148,163,184,.18); background:#0b1224; color:var(--text); padding:8px 12px; font-weight:600; cursor:pointer; transition:transform .05s ease;}
+    button:hover{border-color:rgba(148,163,184,.35)}
+    button:active{transform:translateY(1px)}
+    button.primary{background:linear-gradient(180deg, rgba(56,189,248,.25), rgba(56,189,248,.1)); border-color:rgba(56,189,248,.5)}
+
+    .row{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+
+    .pill{display:inline-flex; align-items:center; gap:8px; background:var(--chip); border:1px solid rgba(148,163,184,.2); color:#e2e8f0; padding:6px 10px; border-radius:999px; font-size:13px}
+    .pill .dot{width:8px; height:8px; border-radius:50%}
+
+    .panel{background:rgba(2,6,23,.5); border:1px dashed rgba(148,163,184,.25); border-radius:16px; padding:12px; min-height:120px}
+
+    .columns{display:grid; gap:12px; grid-template-columns:1fr 1fr}
+    .columns .panel h4{margin:0 0 8px; color:#cbd5e1}
+
+    .rule{background:rgba(15,23,42,.7); border:1px solid rgba(148,163,184,.2); padding:10px 12px; border-radius:14px; margin:9px 0; position:relative}
+    .rule .title{font-weight:800;}
+    .rule .cond{color:#d1d5db; font-size:14px}
+    .rule.active{box-shadow:0 0 0 2px var(--accent) inset, 0 0 22px rgba(56,189,248,.35)}
+    .rule.fired{box-shadow:0 0 0 2px var(--good) inset, 0 0 22px rgba(16,185,129,.35)}
+
+    .stack{display:flex; gap:8px; flex-wrap:wrap}
+
+    .legend{display:flex; gap:12px; flex-wrap:wrap; font-size:13px; opacity:.9}
+
+    .kbd{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; background:#0a0f1f; border:1px solid rgba(148,163,184,.25); padding:2px 6px; border-radius:6px;}
+
+    /* Fuzzy area */
+    .fuzzy-controls{display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin:10px 0}
+    .fuzzy-controls input[type=range]{width:240px}
+
+    canvas{width:100%; height:220px; display:block; background:linear-gradient(180deg, rgba(167,139,250,.12), rgba(167,139,250,.03)); border:1px solid rgba(148,163,184,.2); border-radius:14px}
+    .measure{font-variant-numeric:tabular-nums}
+
+    .mini{font-size:13px; color:#cbd5e1; opacity:.9}
+    ul.steps{margin:8px 0 0 18px}
+    ul.steps li{margin:6px 0}
+
+    footer{max-width:1200px; margin:0 auto; padding:14px 22px 40px; color:#cbd5e1}
+    footer a{color:#93c5fd}
+    .brandbar{background:#ffffff; border-bottom:3px solid var(--usj-orange); position:sticky; top:0; z-index:50}
+    .brandwrap{max-width:1200px; margin:0 auto; display:flex; align-items:center; gap:12px; padding:8px 14px}
+    .brandlogo{height:40px; width:auto; display:block}
+    .brandtext{line-height:1.1}
+    .brandtext .usj{font-weight:800; color:var(--usj-black)}
+    .brandtext .prof{font-weight:700; color:var(--usj-red)}
+
+  </style>
+</head>
+<body>
+  <!-- USJ brand bar (approximate colors) -->
+  <div class="brandbar" role="banner" aria-label="Universidad San Jorge">
+    <div class="brandwrap">
+      <img class="brandlogo" alt="Universidad San Jorge logo" src="https://images.seeklogo.com/logo-png/33/1/universidad-de-san-jorge-logo-png_seeklogo-337176.png"/>
+      <div class="brandtext">
+        <div class="usj">Universidad San Jorge · Zaragoza</div>
+        <div class="prof">Rafael del Hoyo</div>
+      </div>
+    </div>
+  </div>
+  <header>
+    <h1>How a Rule Engine and a Fuzzy Engine Work — Step‑by‑Step (with Animations)</h1>
+    <p class="lead">Use the <strong>Play</strong> or <strong>Step</strong> buttons to walk through each system. On the left you have a classic <em>Production Rule Engine</em> using forward chaining; on the right, a <em>Fuzzy Inference System</em> (Mamdani‑style) showing fuzzification → rule evaluation → aggregation → defuzzification.</p>
+  </header>
+
+  <section class="grid">
+    <!-- ==================== RULE ENGINE ==================== -->
+    <article class="card" id="ruleEngine">
+      <header>
+        <h2>Production Rule Engine (Forward Chaining)</h2>
+        <div class="legend">
+          <span class="pill"><span class="dot" style="background:var(--accent)"></span>Matching</span>
+          <span class="pill"><span class="dot" style="background:var(--good)"></span>Fired</span>
+          <span class="pill"><span class="dot" style="background:var(--warn)"></span>Conflict set</span>
+        </div>
+      </header>
+      <main>
+        <div class="row">
+          <div class="columns" style="width:100%">
+            <div class="panel">
+              <h4>Working Memory (facts)</h4>
+              <div id="wm" class="stack" aria-live="polite"></div>
+            </div>
+            <div class="panel">
+              <h4>Conflict Set</h4>
+              <div id="conflict" class="stack"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel" style="margin-top:12px">
+          <h4>Rule Base</h4>
+          <div id="rules"></div>
+        </div>
+
+        <div class="controls">
+          <button class="primary" id="rulePlay">▶ Play</button>
+          <button id="ruleStep">Step</button>
+          <button id="ruleReset">Reset</button>
+          <span class="mini">Hotkeys: <span class="kbd">P</span> play, <span class="kbd">N</span> step, <span class="kbd">R</span> reset</span>
+        </div>
+
+        <div>
+          <h4>What happens, step by step</h4>
+          <ul class="steps">
+            <li><strong>Match</strong>: compare the <em>IF</em> parts of rules with facts in Working Memory.</li>
+            <li><strong>Build Conflict Set</strong>: collect all rules whose conditions are satisfied.</li>
+            <li><strong>Resolve Conflicts</strong>: choose a rule to fire (e.g., priority, recency, specificity).</li>
+            <li><strong>Fire</strong>: execute the <em>THEN</em> part — assert/retract facts → Working Memory updates.</li>
+            <li><strong>Repeat</strong> until no more rules are applicable (fixed point).</li>
+          </ul>
+        </div>
+      </main>
+    </article>
+
+    <!-- ==================== FUZZY ENGINE ==================== -->
+    <article class="card" id="fuzzyEngine">
+      <header>
+        <h2>Fuzzy Inference System (Mamdani)</h2>
+        <div class="legend">
+          <span class="pill"><span class="dot" style="background:var(--accent-2)"></span>Fuzzification</span>
+          <span class="pill"><span class="dot" style="background:var(--accent)"></span>Rule activation</span>
+          <span class="pill"><span class="dot" style="background:var(--accent-3)"></span>Defuzzification</span>
+        </div>
+      </header>
+      <main>
+        <div class="fuzzy-controls">
+          <label for="temp">Input temperature (°C):</label>
+          <input id="temp" type="range" min="0" max="40" value="28"/>
+          <span class="measure" id="tempVal">28°C</span>
+        </div>
+
+        <div class="columns">
+          <div class="panel">
+            <h4>Input Memberships (Temperature)</h4>
+            <canvas id="inCanvas" width="520" height="220" aria-label="Input membership functions"></canvas>
+          </div>
+          <div class="panel">
+            <h4>Output Memberships (Fan Speed)</h4>
+            <canvas id="outCanvas" width="520" height="220" aria-label="Output membership functions"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h4>Fuzzy Rule Base</h4>
+          <div id="fuzzyRules"></div>
+        </div>
+
+        <div class="controls">
+          <button class="primary" id="fuzzyPlay">▶ Play</button>
+          <button id="fuzzyStep">Step</button>
+          <button id="fuzzyReset">Reset</button>
+        </div>
+
+        <div>
+          <h4>Pipeline</h4>
+          <ul class="steps">
+            <li><strong>Fuzzification</strong>: map numeric input to degrees for <em>Cold</em>, <em>Warm</em>, <em>Hot</em>.</li>
+            <li><strong>Rule Evaluation</strong>: compute each rule's firing strength (min for AND).</li>
+            <li><strong>Aggregation</strong>: clip/union the output sets (<em>Low</em>, <em>Medium</em>, <em>High</em>).</li>
+            <li><strong>Defuzzification</strong>: centroid of the aggregated area → crisp fan speed.</li>
+          </ul>
+        </div>
+      </main>
+    </article>
+      <!-- ==================== SUMMARY (Differences) ==================== -->
+    <article class="card" style="grid-column:1/-1; margin-top:6px">
+      <header>
+        <h2>Key Differences — Rule Engine vs Fuzzy Inference</h2>
+      </header>
+      <main>
+        <div class="columns">
+          <div class="panel">
+            <h4>Rule Engine (boolean)</h4>
+            <ul class="steps">
+              <li><strong>Data type:</strong> crisp facts (true/false, exact symbols).</li>
+              <li><strong>Mechanism:</strong> match → conflict set → select policy → <em>fire</em> actions.</li>
+              <li><strong>Effect of a rule:</strong> discrete changes (assert/retract facts).</li>
+              <li><strong>Termination:</strong> when no rule matches (fixed point).</li>
+              <li><strong>Optimization:</strong> RETE can be used to cache matches.</li>
+            </ul>
+          </div>
+          <div class="panel">
+            <h4>Fuzzy Inference (graded)</h4>
+            <ul class="steps">
+              <li><strong>Data type:</strong> degrees of truth (μ ∈ [0,1]) over membership functions.</li>
+              <li><strong>Mechanism:</strong> fuzzification → rule activation (min for AND) → aggregation → centroid defuzzification.</li>
+              <li><strong>Effect of a rule:</strong> partial contribution to the output set (clipped/weighted shapes).</li>
+              <li><strong>Output:</strong> continuous value after defuzzification (e.g., fan speed %).</li>
+              <li><strong>No conflict set:</strong> rules don’t compete; they <em>combine</em>.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:10px">
+          <h4>Membership functions used (verified)</h4>
+          <ul class="steps">
+            <li><strong>Input — Temperature (0–40°C):</strong> <em>Cold</em> = left‑shoulder triangle <span class="kbd">tri(0,0,18)</span>; <em>Warm</em> = trapezoid <span class="kbd">trap(12,18,28,34)</span>; <em>Hot</em> = right‑shoulder triangle <span class="kbd">tri(26,40,40)</span>. Shoulder cases are handled explicitly in <span class="kbd">tri()</span> so μ(0)=1 for Cold and μ(40)=1 for Hot.</li>
+            <li><strong>Output — Fan Speed (0–100%):</strong> <em>Low</em> = left‑shoulder <span class="kbd">tri(0,0,40)</span>; <em>Medium</em> = triangle <span class="kbd">tri(25,50,75)</span>; <em>High</em> = right‑shoulder <span class="kbd">tri(60,100,100)</span>. This yields smooth low/medium/high regions and a meaningful centroid.</li>
+            <li>If you prefer <em>Sugeno</em> instead of Mamdani, replace the output MFs with linear consequents and compute a weighted average.</li>
+          </ul>
+        </div>
+        <p class="mini">ES (resumen): El motor de reglas trabaja con hechos booleanos y resuelve conflictos para disparar acciones discretas; el motor difuso trabaja con grados de pertenencia, combina reglas y produce una salida continua tras la defuzzificación.</p>
+      </main>
+    </article>
+  </section>
+
+  <footer>
+    <p><strong>Notes for instructors:</strong> The left panel models a minimal forward‑chaining cycle with conflict‑set resolution; the right panel shows a compact Mamdani system. Keep both running side‑by‑side to contrast <em>boolean</em> vs <em>graded</em> inference. All code is pure HTML/CSS/JS plus <a href="https://animejs.com/" target="_blank" rel="noreferrer">anime.js</a> for lightweight animations.</p>
+  </footer>
+
+  <script>
+  // ---------- tiny helper: fallback if anime.js failed to load ----------
+  function animate(targets, props){
+    if(window.anime){ return anime({targets, ...props}); }
+    // Fallback: set properties immediately
+    const els = (targets instanceof Element || targets instanceof SVGElement) ? [targets] : document.querySelectorAll(targets);
+    els.forEach(el=>{
+      for(const k of Object.keys(props)){ if(k==="targets"||k==="easing"||k==="duration"||k==="delay"||k==="loop"||k==="complete") continue; el.style[k]=typeof props[k]==="number"? props[k]+"px" : props[k]; }
+    });
+    props.complete && props.complete();
+    return {pause(){}, play(){}, restart(){}};
+  }
+
+  // ==========================================================
+  //                    RULE ENGINE DEMO
+  // ==========================================================
+  const WM_INIT = [
+    {k:"temperature", v:"high"},
+    {k:"smoke", v:true}
+  ];
+
+  // Three simple rules to form a small chain
+  const RULES = [
+    { id:"R1", priority:3,
+      if:[ {k:"temperature", op:"=", v:"high"}, {k:"smoke", op:"=", v:true} ],
+      then:{ act:"assert", fact:{k:"alarm", v:"on"} }
+    },
+    { id:"R2", priority:2,
+      if:[ {k:"alarm", op:"=", v:"on"} ],
+      then:{ act:"assert", fact:{k:"sprinkler", v:"on"} }
+    },
+    { id:"R3", priority:1,
+      if:[ {k:"sprinkler", op:"=", v:"on"} ],
+      then:{ act:"assert", fact:{k:"notify", v:"fire_department"} }
+    }
+  ];
+
+  const elWM = document.getElementById('wm');
+  const elRules = document.getElementById('rules');
+  const elConflict = document.getElementById('conflict');
+
+  let wm = [];
+  let agenda = []; // conflict set
+  let fired = new Set();
+  let ruleStepIndex = 0; // 0: match, 1: choose, 2: fire
+  let playingRule = false;
+
+  function factPill(f){
+    const span = document.createElement('span');
+    span.className = 'pill';
+    const dot = document.createElement('span');
+    dot.className = 'dot'; dot.style.background = 'var(--accent)';
+    span.appendChild(dot);
+    span.appendChild(document.createTextNode(`${f.k}:${f.v}`));
+    return span;
+  }
+
+  function drawWM(){ elWM.innerHTML=''; wm.forEach(f => elWM.appendChild(factPill(f))); }
+  function drawAgenda(){
+    elConflict.innerHTML='';
+    agenda.forEach(r => {
+      const tag = document.createElement('span'); tag.className='pill';
+      tag.style.borderColor='rgba(245,158,11,.45)';
+      const dot = document.createElement('span'); dot.className='dot'; dot.style.background='var(--warn)';
+      tag.appendChild(dot); tag.appendChild(document.createTextNode(`${r.id}`));
+      elConflict.appendChild(tag);
+    });
+  }
+
+  function ruleHTML(r){
+    const div = document.createElement('div'); div.className='rule'; div.id = `rule-${r.id}`;
+    div.innerHTML = `<div class="title">${r.id} <span class="mini">(priority ${r.priority})</span></div>`+
+                    `<div class="cond">IF ${r.if.map(c=>`${c.k} ${c.op} ${c.v}`).join(' AND ')}<br>THEN assert ${r.then.fact.k}=${r.then.fact.v}</div>`;
+    return div;
+  }
+
+  function drawRules(){ elRules.innerHTML=''; RULES.forEach(r => elRules.appendChild(ruleHTML(r))); }
+
+  function hasFact(f){ return wm.some(x => x.k===f.k && String(x.v)===String(f.v)); }
+
+  function matchPhase(){
+    agenda = [];
+    RULES.forEach(r => {
+      const ok = r.if.every(c => hasFact({k:c.k, v:c.v}));
+      const el = document.getElementById(`rule-${r.id}`);
+      el.classList.remove('fired','active');
+      if(ok && !fired.has(r.id)){
+        agenda.push(r);
+        el.classList.add('active');
+        animate(el, {duration:700, scale:[1,1.02], direction:'alternate'});
+      }
+    });
+    agenda.sort((a,b)=> b.priority - a.priority); // simple strategy: highest priority first
+    drawAgenda();
+  }
+
+  function choosePhase(){
+    if(!agenda.length) return false;
+    // choose top of agenda
+    const r = agenda[0];
+    const el = document.getElementById(`rule-${r.id}`);
+    animate(el, {borderColor:'#22d3ee', duration:400});
+    return r;
+  }
+
+  function firePhase(r){
+    if(!r) return;
+    const el = document.getElementById(`rule-${r.id}`);
+    const f = r.then.fact;
+    if(!hasFact(f)){
+      wm.push(f);
+      drawWM();
+      // small animation burst
+      el.classList.remove('active'); el.classList.add('fired');
+      animate(el, {duration:400, scale:[1,1.03], direction:'alternate'});
+    }
+    fired.add(r.id);
+    agenda.shift();
+    drawAgenda();
+  }
+
+  function ruleReset(){ wm = JSON.parse(JSON.stringify(WM_INIT)); fired.clear(); agenda=[]; ruleStepIndex=0; drawWM(); drawRules(); drawAgenda(); }
+  ruleReset();
+
+  function ruleNextStep(){
+    if(playingRule) return;
+    if(ruleStepIndex===0){ matchPhase(); ruleStepIndex=1; return; }
+    if(ruleStepIndex===1){ const r = choosePhase(); ruleStepIndex=2; if(!r){ /* done */ ruleStepIndex=0; return; } ruleNextStep._chosen=r; return; }
+    if(ruleStepIndex===2){ firePhase(ruleNextStep._chosen); ruleStepIndex=0; return; }
+  }
+
+  document.getElementById('ruleStep').addEventListener('click', ruleNextStep);
+  document.getElementById('ruleReset').addEventListener('click', ruleReset);
+  document.getElementById('rulePlay').addEventListener('click', async ()=>{
+    if(playingRule) return; playingRule=true;
+    // Loop: match → choose → fire, until fixed point
+    let safety=12;
+    while(safety-->0){
+      matchPhase();
+      const r = choosePhase();
+      if(!r){ break; }
+      await new Promise(res=> setTimeout(res, 450));
+      firePhase(r);
+      await new Promise(res=> setTimeout(res, 450));
+    }
+    playingRule=false; ruleStepIndex=0;
+  });
+
+  // hotkeys
+  window.addEventListener('keydown', (e)=>{
+    if(["INPUT","TEXTAREA"].includes(e.target.tagName)) return;
+    if(e.key.toLowerCase()==='n'){ ruleNextStep(); }
+    if(e.key.toLowerCase()==='p'){ document.getElementById('rulePlay').click(); }
+    if(e.key.toLowerCase()==='r'){ ruleReset(); }
+  });
+
+  // ==========================================================
+  //                    FUZZY ENGINE DEMO
+  // ==========================================================
+  const tempSlider = document.getElementById('temp');
+  const tempVal = document.getElementById('tempVal');
+  const inCanvas = document.getElementById('inCanvas');
+  const outCanvas = document.getElementById('outCanvas');
+  const ictx = inCanvas.getContext('2d');
+  const octx = outCanvas.getContext('2d');
+
+  // --- Membership helpers (triangles/trapezoids) ---
+  function tri(x,a,b,c){
+    // Robust triangular MF supporting shoulder cases (a==b or b==c)
+    if(a===b && b===c){ return x===a ? 1 : 0; }
+    if(a===b){ // left-shoulder: 1 up to b, then down to 0 at c
+      if(x<=b) return 1;
+      if(x>=c) return 0;
+      return (c - x) / (c - b);
+    }
+    if(b===c){ // right-shoulder: 0 up to a, then up to 1 at b and beyond
+      if(x<=a) return 0;
+      if(x>=b) return 1;
+      return (x - a) / (b - a);
+    }
+    if(x<=a || x>=c) return 0;
+    if(x===b) return 1;
+    return x < b ? (x - a) / (b - a) : (c - x) / (c - b);
+  }
+  function trap(x,a,b,c,d){ if(x<=a||x>=d) return 0; if(x>=b && x<=c) return 1; if(x>a && x<b) return (x-a)/(b-a); return (d-x)/(d-c); }
+
+  // Input: Temperature 0..40
+  function Cold(x){ return tri(x, 0, 0, 18); }
+  function Warm(x){ return trap(x, 12, 18, 28, 34); }
+  function Hot(x){ return tri(x, 26, 40, 40); }
+
+  // Output: FanSpeed 0..100
+  function Low(y){ return tri(y, 0, 0, 40); }
+  function Medium(y){ return tri(y, 25, 50, 75); }
+  function High(y){ return tri(y, 60, 100, 100); }
+
+  // Rules: 1) IF Cold THEN Low; 2) IF Warm THEN Medium; 3) IF Hot THEN High
+  const FRULES = [
+    { id:'FR1', text:'IF Temperature is Cold THEN Fan Speed is Low' },
+    { id:'FR2', text:'IF Temperature is Warm THEN Fan Speed is Medium' },
+    { id:'FR3', text:'IF Temperature is Hot THEN Fan Speed is High' }
+  ];
+
+  function fruleHTML(r){
+    return `<div class="rule" id="frule-${r.id}">
+      <div class="title">${r.id}</div>
+      <div class="cond">${r.text}</div>
+      <div class="mini">activation μ = <span id="deg-${r.id}">0.00</span></div>
+    </div>`;
+  }
+  function drawFRules(){ const c = document.getElementById('fuzzyRules'); if(!c) return; c.innerHTML = FRULES.map(fruleHTML).join(''); }
+  function resetFRules(){ FRULES.forEach(r=>{ const el=document.getElementById(`frule-${r.id}`); const d=document.getElementById(`deg-${r.id}`); if(el){ el.classList.remove('active','fired'); } if(d){ d.textContent='0.00'; } }); }
+  function updateFRules(muC, muW, muH){ const map={FR1:muC, FR2:muW, FR3:muH}; Object.keys(map).forEach(id=>{ const mu=map[id]; const el=document.getElementById(`frule-${id}`); const d=document.getElementById(`deg-${id}`); if(!el||!d) return; d.textContent=mu.toFixed(2); el.classList.toggle('active', mu>0); el.classList.remove('fired'); if(mu>0) animate(el,{duration:500, scale:[1,1.02], direction:'alternate'}); }); }
+  function markFiredFRules(){ const map={FR1:cache.muC||0, FR2:cache.muW||0, FR3:cache.muH||0}; Object.keys(map).forEach(id=>{ const mu=map[id]; const el=document.getElementById(`frule-${id}`); if(!el) return; if(mu>0){ el.classList.add('fired'); animate(el,{duration:450, scale:[1,1.03], direction:'alternate'}); } }); }
+  const fuzzySteps = { idx:0, playing:false };
+  let cache = { muC:0, muW:0, muH:0, aLow:0, aMed:0, aHigh:0, crisp:0 };
+
+  function drawAxes(ctx, maxX, label){
+    const w = ctx.canvas.width, h = ctx.canvas.height;
+    ctx.clearRect(0,0,w,h);
+    ctx.save();
+    ctx.strokeStyle = 'rgba(226,232,240,.6)'; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.moveTo(30,h-26); ctx.lineTo(w-10,h-26); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(30,10); ctx.lineTo(30,h-26); ctx.stroke();
+    ctx.fillStyle='rgba(203,213,225,.9)'; ctx.font='12px system-ui, sans-serif';
+    ctx.fillText(label, 36, 18);
+    ctx.restore();
+  }
+
+  function plotMF(ctx, fn, color, maxX){
+    const w=ctx.canvas.width, h=ctx.canvas.height; const W=w-50, H=h-36; const x0=30, y0=h-26;
+    ctx.save(); ctx.strokeStyle=color; ctx.lineWidth=2; ctx.beginPath();
+    for(let i=0;i<=W;i++){
+      const x = i/maxX*maxX * (maxX/W) + (i/W*maxX - 0 + 0); // placeholder
+    }
+    // simpler: sample across domain
+    ctx.beginPath();
+    for(let t=0;t<=maxX;t++){
+      const mu = fn(t);
+      const px = x0 + (t/maxX)*(w-50);
+      const py = y0 - mu*(h-36);
+      if(t===0) ctx.moveTo(px,py); else ctx.lineTo(px,py);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  function fillClipped(ctx, fn, alpha, maxX){
+    const w=ctx.canvas.width, h=ctx.canvas.height; const x0=30, y0=h-26;
+    ctx.save(); ctx.fillStyle=`rgba(167,139,250,${alpha})`;
+    ctx.beginPath();
+    for(let t=0;t<=maxX;t++){
+      const mu = fn(t);
+      const px = x0 + (t/maxX)*(w-50);
+      const py = y0 - mu*(h-36);
+      if(t===0) ctx.moveTo(px, y0);
+      ctx.lineTo(px, py);
+    }
+    ctx.lineTo(x0 + (w-50), y0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+
+  function drawInputStage(temp){
+    drawAxes(ictx, 40, 'Temperature (°C)');
+    plotMF(ictx, Cold, '#60a5fa', 40); // blue-ish
+    plotMF(ictx, Warm, '#a78bfa', 40); // violet
+    plotMF(ictx, Hot,  '#f472b6', 40); // pink
+    // fuzzification markers
+    const w=ictx.canvas.width, h=ictx.canvas.height; const x0=30, y0=h-26; const px=x0+(temp/40)*(w-50);
+    ictx.save();
+    ictx.strokeStyle='rgba(56,189,248,.8)'; ictx.setLineDash([6,4]);
+    ictx.beginPath(); ictx.moveTo(px, y0); ictx.lineTo(px, 10); ictx.stroke();
+    ictx.setLineDash([]);
+    ictx.fillStyle='#e2e8f0'; ictx.font='12px system-ui, sans-serif'; ictx.fillText(`${temp.toFixed(1)} °C`, px+6, 22);
+
+    // degrees
+    const muC = Cold(temp), muW = Warm(temp), muH = Hot(temp);
+    cache.muC=muC; cache.muW=muW; cache.muH=muH;
+    const labels = [ ['Cold',muC], ['Warm',muW], ['Hot',muH] ];
+    labels.forEach((t,i)=>{
+      const [name,mu]=t; const by = y0 - mu*(h-36);
+      ictx.fillStyle='rgba(56,189,248,.9)';
+      ictx.beginPath(); ictx.arc(px, by, 4, 0, Math.PI*2); ictx.fill();
+      ictx.fillStyle='rgba(226,232,240,.95)';
+      ictx.fillText(`${name}: ${mu.toFixed(2)}`, px+8, by-6 + i*14);
+    });
+    updateFRules(muC, muW, muH);
+    ictx.restore();
+  }
+
+  function drawOutputStage(step){
+    drawAxes(octx, 100, 'Fan Speed (%)');
+    plotMF(octx, Low,    '#60a5fa', 100);
+    plotMF(octx, Medium, '#a78bfa', 100);
+    plotMF(octx, High,   '#34d399', 100);
+
+    // Step 2–3: activated/clipped outputs
+    const aLow = cache.muC; const aMed = cache.muW; const aHigh = cache.muH;
+    cache.aLow=aLow; cache.aMed=aMed; cache.aHigh=aHigh;
+
+    // highlight fired fuzzy rules based on activation (μ)
+    markFiredFRules();
+
+    // draw clipped regions using min (Mamdani)
+    function clipLow(y){ return Math.min(Low(y), aLow); }
+    function clipMed(y){ return Math.min(Medium(y), aMed); }
+    function clipHigh(y){ return Math.min(High(y), aHigh); }
+    fillClipped(octx, clipLow, 0.18, 100);
+    fillClipped(octx, clipMed, 0.18, 100);
+    fillClipped(octx, clipHigh,0.18, 100);
+
+    // aggregated max
+    function agg(y){ return Math.max(clipLow(y), clipMed(y), clipHigh(y)); }
+
+    // centroid defuzzification
+    let num=0, den=0; for(let y=0;y<=100;y++){ const mu=agg(y); num += y*mu; den += mu; }
+    const crisp = den>0? num/den : 0; cache.crisp=crisp;
+
+    const w=octx.canvas.width, h=octx.canvas.height; const x0=30, y0=h-26; const px=x0+(crisp/100)*(w-50);
+    octx.save();
+    octx.strokeStyle='rgba(52,211,153,.9)'; octx.setLineDash([6,4]);
+    octx.beginPath(); octx.moveTo(px, y0); octx.lineTo(px, 10); octx.stroke();
+    octx.setLineDash([]);
+    octx.fillStyle='rgba(226,232,240,.95)'; octx.font='12px system-ui, sans-serif';
+    octx.fillText(`Centroid ≈ ${crisp.toFixed(1)}%`, px+8, 22);
+    octx.restore();
+  }
+
+  function fuzzyReset(){
+    tempSlider.value=28; tempVal.textContent='28°C';
+    fuzzySteps.idx = 0; cache={};
+    drawFRules(); resetFRules();
+    drawInputStage(28); octx.clearRect(0,0,outCanvas.width,outCanvas.height);
+  }
+  fuzzyReset();
+
+  function fuzzyStep(){
+    const T = Number(tempSlider.value);
+    if(fuzzySteps.idx===0){ // fuzzification only (input panel)
+      drawInputStage(T);
+      fuzzySteps.idx=1; return;
+    }
+    if(fuzzySteps.idx===1){ // show rule activation & aggregation
+      drawOutputStage();
+      fuzzySteps.idx=2; return;
+    }
+    if(fuzzySteps.idx===2){ // nudge centroid line (simple animation)
+      drawOutputStage(); // already drawn includes centroid
+      // Animate a small pulse using anime.js (on the canvas container)
+      animate(outCanvas, { duration:600, scale:[1,1.015], direction:'alternate' });
+      fuzzySteps.idx=0; return;
+    }
+  }
+
+  function fuzzyPlay(){
+    if(fuzzySteps.playing) return; fuzzySteps.playing=true;
+    let seq=[()=>fuzzyStep(), ()=>new Promise(r=>setTimeout(r,500)), ()=>fuzzyStep(), ()=>new Promise(r=>setTimeout(r,600)), ()=>fuzzyStep()];
+    (async()=>{ for(const s of seq){ const v=s(); if(v && v.then) await v; } fuzzySteps.playing=false; })();
+  }
+
+  tempSlider.addEventListener('input', ()=>{ tempVal.textContent = `${tempSlider.value}°C`; drawInputStage(Number(tempSlider.value)); octx.clearRect(0,0,outCanvas.width,outCanvas.height); fuzzySteps.idx=1; });
+
+  document.getElementById('fuzzyStep').addEventListener('click', fuzzyStep);
+  document.getElementById('fuzzyPlay').addEventListener('click', fuzzyPlay);
+  document.getElementById('fuzzyReset').addEventListener('click', fuzzyReset);
+
+  </script>
+</body>
+</html>
