@@ -254,20 +254,19 @@
           </div>
         </div>
         <div class="panel" style="margin-top:10px">
-          <h4>Membership functions used (verified)</h4>
+          <h4>Membership functions used </h4>
           <ul class="steps">
             <li><strong>Input — Temperature (0–40°C):</strong> <em>Cold</em> = left‑shoulder triangle <span class="kbd">tri(0,0,18)</span>; <em>Warm</em> = trapezoid <span class="kbd">trap(12,18,28,34)</span>; <em>Hot</em> = right‑shoulder triangle <span class="kbd">tri(26,40,40)</span>. Shoulder cases are handled explicitly in <span class="kbd">tri()</span> so μ(0)=1 for Cold and μ(40)=1 for Hot.</li>
             <li><strong>Output — Fan Speed (0–100%):</strong> <em>Low</em> = left‑shoulder <span class="kbd">tri(0,0,40)</span>; <em>Medium</em> = triangle <span class="kbd">tri(25,50,75)</span>; <em>High</em> = right‑shoulder <span class="kbd">tri(60,100,100)</span>. This yields smooth low/medium/high regions and a meaningful centroid.</li>
             <li>If you prefer <em>Sugeno</em> instead of Mamdani, replace the output MFs with linear consequents and compute a weighted average.</li>
           </ul>
         </div>
-        <p class="mini">ES (resumen): El motor de reglas trabaja con hechos booleanos y resuelve conflictos para disparar acciones discretas; el motor difuso trabaja con grados de pertenencia, combina reglas y produce una salida continua tras la defuzzificación.</p>
-      </main>
+    </main>
     </article>
   </section>
 
   <footer>
-    <p><strong>Notes for instructors:</strong> The left panel models a minimal forward‑chaining cycle with conflict‑set resolution; the right panel shows a compact Mamdani system. Keep both running side‑by‑side to contrast <em>boolean</em> vs <em>graded</em> inference. All code is pure HTML/CSS/JS plus <a href="https://animejs.com/" target="_blank" rel="noreferrer">anime.js</a> for lightweight animations.</p>
+    <p><strong>Notes for USJ Students </strong> The left panel models a minimal forward‑chaining cycle with conflict‑set resolution; the right panel shows a compact Mamdani system. Keep both running side‑by‑side to contrast <em>boolean</em> vs <em>graded</em> inference. All code is pure HTML/CSS/JS plus <a href="https://animejs.com/" target="_blank" rel="noreferrer">anime.js</a> for lightweight animations.</p>
   </footer>
 
   <script>
