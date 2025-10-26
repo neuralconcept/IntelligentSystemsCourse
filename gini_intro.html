@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Gini Mix‑O‑Meter — anime.js (kid‑friendly v3)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#ffffff; --text:#0b0f19; --muted:#6b7280; --accent:#1a73e8;
+      --yes:#10b981; --no:#ef4444; --glass:#e5e7eb; --meter:#111827;
+      --pure:#10b981; --mixed:#1a73e8; --semi:#f59e0b;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .wrap{display:grid;grid-template-rows:auto 1fr auto;min-height:100vh}
+    header{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid #eef2f7;position:sticky;top:0;background:#fff;z-index:20;pointer-events:auto}
+    .toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btn{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 12px;font-weight:700;cursor:pointer}
+    .btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+
+    .stage{display:grid;place-items:center;padding:20px}
+    .card{width:1100px;max-width:96vw;min-height:680px;background:#fff;border:1px solid #eef2f7;border-radius:16px;box-shadow:0 16px 50px rgba(2,6,23,.07);padding:22px;overflow:hidden}
+    h1{font-size:38px;margin:0 0 6px}
+    .muted{color:var(--muted)}
+
+    .grid{display:grid;grid-template-columns:1.05fr .95fr;gap:20px;height:calc(100% - 10px)}
+    .left, .right{border:1px solid #f1f5f9;border-radius:14px;padding:16px;position:relative}
+
+    /* Jar with marbles */
+    .jar{position:relative;height:520px;background:linear-gradient(180deg,#fff 0%,#fff 60%,#fafafa 100%);border:2px solid var(--glass);border-radius:20px;overflow:hidden}
+    .ball{position:absolute;width:26px;height:26px;border-radius:50%;box-shadow:0 4px 10px rgba(0,0,0,.08);transform:translate(-50%,-50%);background:var(--no)}
+
+    /* Meter */
+    .meter{height:20px;background:#f1f5f9;border-radius:10px;position:relative;overflow:hidden;border:1px solid #e5e7eb}
+    .meter .fill{height:100%;width:0;background:linear-gradient(90deg,#94a3b8,#111827)}
+    .big{font-size:34px;font-weight:900}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace}
+
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}
+    .controls label{font-size:14px;color:#111827;font-weight:700}
+    input[type=range]{width:260px}
+
+    .pill{display:inline-flex;gap:8px;align-items:center;border:1px solid #e5e7eb;background:#fff;border-radius:999px;padding:6px 10px}
+    .swatch{width:14px;height:14px;border-radius:50%}
+
+    .labelBox{position:absolute;left:50%;top:14px;transform:translateX(-50%);z-index:3}
+    .stateLabel{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border-radius:999px;font-weight:900;color:#fff;letter-spacing:0.5px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+    .stateLabel .dot{width:10px;height:10px;border-radius:50%;background:#fff}
+
+    /* Explanation boxes */
+    .boxlist{display:grid;gap:12px;margin-top:10px;max-height:320px;overflow:auto;padding-right:6px}
+    .eqbox{border:1px solid #e5e7eb;border-radius:12px;padding:10px;background:#fff}
+    .eqbox .title{font-weight:800;margin-bottom:6px}
+    .eq{font-size:20px;line-height:1.4}
+    .gplot{height:200px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;position:relative}
+    .kbd{border:1px solid #e5e7eb;border-radius:6px;padding:2px 6px;font-size:12px;background:#f9fafb}
+    pre.mono{background:#f9fafb;border:1px solid #e5e7eb;border-radius:10px;padding:8px;font-size:16px;line-height:1.45;overflow:auto}
+
+    .footer{padding:10px 18px;border-top:1px solid #eef2f7;color:#64748b;font-size:14px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div><b>Gini Mix‑O‑Meter</b> — kid‑friendly, with anime.js</div>
+    <div class="toolbar">
+      <button class="btn" id="muteBtn">🔊 Sound: On</button>
+      <button class="btn" id="copyBtn">📋 Copy HTML</button>
+      <button class="btn" id="downloadBtn">⬇️ Download HTML</button>
+      <button class="btn primary" id="auto">Auto</button>
+      <button class="btn" id="replayBtn">▶️ Replay intro</button>
+      <button class="btn" id="resetBtn">🔄 Reset demo</button>
+      <button class="btn" id="explainBtn">📖 Explain (EN)</button>
+    </div>
+  </header>
+
+  <main class="stage">
+    <div class="card">
+      <h1>How mixed are the marbles? <span style="color:var(--accent)">Gini</span> shows it!</h1>
+      <div class="grid">
+        <div class="left">
+          <div class="jar" id="jar" aria-label="Jar of marbles">
+            <div class="labelBox"><span id="state" class="stateLabel" style="background:var(--mixed)"><span class="dot"></span>MIXED</span></div>
+          </div>
+          <div class="controls">
+            <label for="p">Green marbles (Yes):</label>
+            <input id="p" type="range" min="0" max="100" value="64" />
+            <span class="pill"><span class="swatch" style="background:var(--yes)"></span><span class="mono" id="yesLab"></span></span>
+            <span class="pill"><span class="swatch" style="background:var(--no)"></span><span class="mono" id="noLab"></span></span>
+            <button class="btn" id="shuffle">Shuffle</button>
+          </div>
+        </div>
+        <div class="right">
+          <div style="display:grid;gap:12px">
+            <div>
+              <div class="muted">Gini (binary) formula</div>
+              <div class="mono" style="font-size:18px">Gini(p) = 2 · p · (1 − p)</div>
+            </div>
+            <div>
+              <div class="muted">Mix‑O‑Meter (0 = pure, 0.5 = max mix)</div>
+              <div class="meter" aria-label="Gini meter"><div class="fill" id="meter"></div></div>
+            </div>
+            <div>
+              <div class="muted">Live numbers</div>
+              <div class="big" id="gval">0.000</div>
+              <div class="mono" id="nums"></div>
+            </div>
+            <div>
+              <div class="muted">Gini curve (binary): G(p) = 2·p·(1−p)</div>
+              <div id="gplot" class="gplot" aria-label="Gini curve"></div>
+            </div>
+            <div class="muted" style="margin-top:6px">
+              Tip: Gini is <b>0</b> when all marbles are the <b>same color</b> and goes up as colors get more <b>balanced</b>. With two colors the maximum is <b>0.5</b> at 50/50.
+            </div>
+            <div class="boxlist" id="explain" style="display:none">
+              <div class="eqbox">
+                <div class="title">1) What is Gini impurity?</div>
+                <div class="eq mono">G(t) = 1 − Σ p<sub>k</sub><sup>2</sup></div>
+                <div class="muted">It measures how mixed the labels are in a node <span class="mono">t</span>. 0 means pure (all samples the same class). Range: 0 ≤ G ≤ 1 − 1/K (max 0.5 for binary).</div>
+              </div>
+              <div class="eqbox">
+                <div class="title">2) Binary intuition (two colors)</div>
+                <div class="muted">Let p = P(green) and 1 − p = P(red) in the jar.</div>
+                <div class="eq mono">Start: G = 1 − [ p<sup>2</sup> + (1 − p)<sup>2</sup> ]</div>
+                <div class="muted">Algebraic simplification:</div>
+                <pre class="mono" style="margin:6px 0;white-space:pre-wrap">(1 − p)<sup>2</sup> = 1 − 2p + p<sup>2</sup>
+G = 1 − [ p<sup>2</sup> + 1 − 2p + p<sup>2</sup> ]
+  = 1 − 1 + 2p − 2p<sup>2</sup>
+  = 2p − 2p<sup>2</sup>
+  = 2 · p · (1 − p)</pre>
+              </div>
+              <div class="eqbox">
+                <div class="title">3) Probabilistic explanation (why 2p(1 − p))</div>
+                <div class="muted">Pick two marbles independently (with replacement). Gini is the probability they have different colors:</div>
+                <div class="eq mono">P(diff) = P(green, red) + P(red, green) = p(1 − p) + (1 − p)p = 2p(1 − p)</div>
+                <div class="muted">It is 0 when the jar is all one color (no way to get different colors), and largest at p = 0.5 (most mixed).</div>
+              </div>
+            </div>
+            <div class="muted small">Click <span class="kbd">Explain (EN)</span> to toggle the math boxes.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <div class="footer">Drag the slider to change the mix. Hit <b>Auto</b> to sweep and watch the meter dance. <b>Shuffle</b> re‑arranges marbles with a burst ✨  •  Click <b>Explain (EN)</b> to reveal the math boxes.</div>
+</div>
+
+<script>
+const jar = document.getElementById('jar');
+const slider = document.getElementById('p');
+const yesLab = document.getElementById('yesLab');
+const noLab = document.getElementById('noLab');
+const meter = document.getElementById('meter');
+const gval = document.getElementById('gval');
+const nums = document.getElementById('nums');
+const autoBtn = document.getElementById('auto');
+const shuffleBtn = document.getElementById('shuffle');
+let state = document.getElementById('state');
+const muteBtn = document.getElementById('muteBtn');
+const copyBtn = document.getElementById('copyBtn');
+const downloadBtn = document.getElementById('downloadBtn');
+const explainBtn = document.getElementById('explainBtn');
+const replayBtn = document.getElementById('replayBtn');
+const resetBtn = document.getElementById('resetBtn');
+const explain = document.getElementById('explain');
+const gplotEl = document.getElementById('gplot');
+
+// --- anime.js fallback to avoid hard failures if CDN blocks ---
+if(typeof window.anime === 'undefined'){
+  window.anime = function(){};
+  window.anime.set = function(){};
+  window.anime.stagger = function(){ return 0; };
+}
+const HAS_ANIME = !!window.anime && typeof window.anime === "function";
+
+let SOUND_ON = true;
+let AC = null; // AudioContext on first use
+
+function ensureAudio(){ if(!SOUND_ON) return null; if(!AC){ AC = new (window.AudioContext || window.webkitAudioContext)(); } return AC; }
+function beep(freq=600, duration=0.12, volume=0.08){ const ctx = ensureAudio(); if(!ctx) return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'sine'; osc.frequency.value = freq; gain.gain.value = volume; osc.connect(gain); gain.connect(ctx.destination); const t = ctx.currentTime; osc.start(t); osc.stop(t+duration); }
+function pop(duration=0.08){ const ctx = ensureAudio(); if(!ctx) return; const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.type = 'triangle'; osc.frequency.value = 220; gain.gain.setValueAtTime(0.12, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + duration); osc.connect(gain); gain.connect(ctx.destination); osc.start(); osc.stop(ctx.currentTime + duration); }
+
+// --- Build marbles (after layout) ---
+let N = 48; // number of marbles
+const balls = [];
+let cols = 8; let rows = Math.ceil(N/cols);
+let pad = 26; let cellW=0, cellH=0;
+
+function computeGrid(){ rows = Math.ceil(N/cols); const rect = jar.getBoundingClientRect(); cellW = (rect.width - pad*2) / cols; cellH = (rect.height - pad*2) / rows; }
+function gridPos(i){ const r = Math.floor(i/cols), c=i%cols; const x = pad + c*cellW + cellW/2 + (Math.random()-0.5)*6; const y = pad + r*cellH + cellH/2 + (Math.random()-0.5)*6; return {x,y}; }
+function layout(shuffle=false){ computeGrid(); const order = [...Array(N).keys()]; if(shuffle){ for(let i=order.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [order[i],order[j]]=[order[j],order[i]]; } } order.forEach((idx,i)=>{ const {x,y} = gridPos(i); if(window.anime){ anime({targets:balls[idx], translateX:x, translateY:y, duration:500, delay:i*8, easing:'easeOutCubic'}); } else { balls[idx].style.transform = `translate(${x}px, ${y}px)`; } }); }
+function buildBalls(){ jar.innerHTML = '<div class="labelBox"><span id="state" class="stateLabel" style="background:var(--mixed)"><span class="dot"></span>MIXED</span></div>'; state = document.getElementById('state'); for(let i=0;i<N;i++){ const b=document.createElement('div'); b.className='ball'; jar.appendChild(b); balls.push(b); } }
+
+function confettiBurst(){ const count = 50; for(let i=0;i<count;i++){ const p=document.createElement('div'); p.style.position='absolute'; p.style.left='50%'; p.style.top='40%'; p.style.width='6px'; p.style.height='10px'; p.style.background= i%2? getComputedStyle(document.documentElement).getPropertyValue('--yes') : getComputedStyle(document.documentElement).getPropertyValue('--no'); p.style.borderRadius='2px'; p.style.transform='translate(-50%,-50%)'; jar.appendChild(p); anime({targets:p, translateX:(Math.random()-0.5)*600, translateY:200+Math.random()*260, rotate:360+Math.random()*720, opacity:[1,0], duration:900+Math.random()*600, easing:'easeOutCubic', complete:()=>p.remove()}); } }
+function ripple(){ anime({targets:meter, scale:[1,1.05,1], duration:500, easing:'easeInOutQuad'}); }
+function setStateLabel(p){ const el = state; const eps = 0.05; let text = 'SEMI‑MIXED', bg='var(--semi)'; if(p < eps || p > 1-eps){ text = 'PURE'; bg='var(--pure)'; } else if(Math.abs(p-0.5) <= eps){ text = 'MIXED'; bg='var(--mixed)'; } el.textContent = text; el.prepend(Object.assign(document.createElement('span'),{className:'dot'})); el.style.background = bg; anime({targets:el, scale:[0.9,1.06,1], duration:450, easing:'easeInOutQuad'}); }
+
+function render(){ const p = slider.value/100; const yes = Math.round(N*p); const no = N-yes; yesLab.textContent = `Yes = ${yes}`; noLab.textContent = `No = ${no}`; balls.forEach((b,i)=>{ b.style.background = i<yes ? getComputedStyle(document.documentElement).getPropertyValue('--yes') : getComputedStyle(document.documentElement).getPropertyValue('--no'); }); anime({targets:balls, scale:[0.9,1], duration:300, delay:anime.stagger(6), easing:'easeOutQuad'}); const g = 2*p*(1-p); const widthPct = (g/0.5)*100; if(window.anime){ anime({targets:meter, width: `${widthPct}%`, duration:500, easing:'easeOutCubic'}); }
+  meter.style.width = `${widthPct}%`; anime({targets:gval, innerHTML:[Number(gval.textContent)||0, g.toFixed(3)], round:1000, duration:600, easing:'easeOutExpo'});
+  gval.textContent = g.toFixed(3); nums.textContent = `p = ${p.toFixed(3)}   →   Gini = 2·${p.toFixed(3)}·(1−${p.toFixed(3)}) = ${(g).toFixed(3)}`;
+  plotUpdate(p); setStateLabel(p); if(SOUND_ON){ if(p < 0.02 || p > 0.98){ confettiBurst(); pop(); } if(Math.abs(p-0.5) < 0.02){ ripple(); beep(880,0.08,0.06); } } }
+
+let autoTimer=null; let dir=1; function toggleAuto(){ if(autoTimer){ clearInterval(autoTimer); autoTimer=null; autoBtn.textContent='Auto'; autoBtn.classList.add('primary'); return; } autoBtn.textContent='Stop'; autoBtn.classList.remove('primary'); autoTimer = setInterval(()=>{ let val = Number(slider.value); val += dir*2; if(val>=100){ val=100; dir=-1; if(SOUND_ON) pop(); } if(val<=0){ val=0; dir=1; if(SOUND_ON) pop(); } slider.value = val; render(); }, 120); }
+
+function toggleExplanation(){ if(explain.style.display==='none'){ explain.style.display='grid'; const boxes = explain.querySelectorAll('.eqbox'); anime.set(boxes,{opacity:0,translateY:8}); anime({targets:boxes, opacity:[0,1], translateY:[8,0], delay:anime.stagger(120), duration:360, easing:'easeOutQuad'}); } else { if(!window.anime || typeof window.anime !== 'function'){ explain.style.display='none'; explain.style.opacity=1; } else { anime({targets:explain, opacity:[1,0], duration:260, easing:'easeInOutQuad', complete:()=>{ explain.style.display='none'; explain.style.opacity=1; }}); } } }
+
+// --- Mini Gini curve plot (SVG) ---
+let gsvg=null, gline=null, gdot=null, glbl=null, gpath=null;
+let spx=null, spy=null; // scale functions
+function buildPlot(){
+  if(!gplotEl) return;
+  gplotEl.innerHTML='';
+  const rect = gplotEl.getBoundingClientRect();
+  const W = Math.max(420, Math.floor(rect.width || 500));
+  const H = 200; const m=24;
+  const gx0=m, gy0=H-m, gx1=W-m, gy1=m;
+  spx = (p)=> gx0 + (gx1-gx0)*p;
+  spy = (g)=> gy0 - (gy0-gy1)*(g/0.5);
+  gsvg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+  gsvg.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  gplotEl.appendChild(gsvg);
+  const axes=document.createElementNS('http://www.w3.org/2000/svg','path');
+  axes.setAttribute('d',`M ${gx0} ${gy0} H ${gx1} M ${gx0} ${gy0} V ${gy1}`);
+  axes.setAttribute('stroke','#e5e7eb'); axes.setAttribute('fill','none'); gsvg.appendChild(axes);
+  // curve G(p)=2p(1-p)
+  let d=''; for(let i=0;i<=100;i++){ const p=i/100; const x=spx(p), y=spy(2*p*(1-p)); d += (i===0?`M ${x} ${y}`:` L ${x} ${y}`); }
+  gpath=document.createElementNS('http://www.w3.org/2000/svg','path');
+  gpath.setAttribute('d',d); gpath.setAttribute('stroke','#1a73e8'); gpath.setAttribute('fill','none'); gpath.setAttribute('stroke-width','2'); gsvg.appendChild(gpath);
+  anime.set(gpath,{strokeDasharray:1000,strokeDashoffset:1000});
+  anime({targets:gpath, strokeDashoffset:[1000,0], duration:800, easing:'easeOutCubic'});
+  // key points
+  [0,0.5,1].forEach((pp,i)=>{ const c=document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx', spx(pp)); c.setAttribute('cy', spy(2*pp*(1-pp))); c.setAttribute('r',3.5); c.setAttribute('fill', i===1?'#1a73e8':'#9ca3af'); gsvg.appendChild(c); });
+  // vertical guide & marker
+  gline=document.createElementNS('http://www.w3.org/2000/svg','line'); gline.setAttribute('y1', gy1); gline.setAttribute('y2', gy0); gline.setAttribute('stroke','#111827'); gline.setAttribute('stroke-width','1.5'); gline.setAttribute('opacity','0.8'); gsvg.appendChild(gline);
+  gdot=document.createElementNS('http://www.w3.org/2000/svg','circle'); gdot.setAttribute('r',5); gdot.setAttribute('fill','#10b981'); gsvg.appendChild(gdot);
+  glbl=document.createElementNS('http://www.w3.org/2000/svg','text'); glbl.setAttribute('class','mono'); glbl.setAttribute('fill','#111827'); gsvg.appendChild(glbl);
+}
+function plotUpdate(p){
+  if(!gsvg || !spx || !spy) return;
+  const x = spx(p); const g = 2*p*(1-p); const y = spy(g);
+  gline.setAttribute('x1', x); gline.setAttribute('x2', x);
+  gdot.setAttribute('cx', x); gdot.setAttribute('cy', y);
+  glbl.setAttribute('x', x+8); glbl.setAttribute('y', y-8);
+  glbl.textContent = `p=${p.toFixed(2)}, G=${g.toFixed(3)}`;
+}
+
+// Reset demo to a clean state
+function resetDemo(){
+  if(autoTimer){ clearInterval(autoTimer); autoTimer=null; autoBtn.textContent='Auto'; autoBtn.classList.add('primary'); }
+  slider.value = 50; // p=0.5
+  layout(true);
+  render();
+}
+
+function wire(){ slider.addEventListener('input', ()=>{ if(SOUND_ON) beep(520,0.04,0.03); render(); }); autoBtn.addEventListener('click', toggleAuto); shuffleBtn.addEventListener('click', ()=>{ layout(true); confettiBurst(); if(SOUND_ON) pop(); }); muteBtn.addEventListener('click', ()=>{ SOUND_ON = !SOUND_ON; muteBtn.textContent = SOUND_ON ? '🔊 Sound: On' : '🔇 Sound: Off'; if(!SOUND_ON && AC){ AC.close(); AC=null; } }); copyBtn.addEventListener('click', async ()=>{ try{ await navigator.clipboard.writeText(document.documentElement.outerHTML); copyBtn.textContent='✅ Copied!'; setTimeout(()=>copyBtn.textContent='📋 Copy HTML',1200); } catch(err){ copyBtn.textContent='⚠️ Copy failed'; setTimeout(()=>copyBtn.textContent='📋 Copy HTML',1500); } }); downloadBtn.addEventListener('click', ()=>{ const blob = new Blob([document.documentElement.outerHTML], {type:'text/html'}); const url = URL.createObjectURL(blob); const a = Object.assign(document.createElement('a'), {href:url, download:'gini-mixometer.html'}); document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 500); }); explainBtn.addEventListener('click', toggleExplanation);
+  replayBtn.addEventListener('click', ()=>{ resetDemo(); replayIntro(); if(SOUND_ON) beep(740,0.06,0.05); });
+  resetBtn.addEventListener('click', ()=>{ resetDemo(); if(SOUND_ON) pop(); });
+}
+
+function intro(){ const h=document.querySelector('h1'); const spans = h.innerText.split('').map(ch=>`<span style="display:inline-block">${ch}</span>`).join(''); h.innerHTML = spans; anime({targets:h.querySelectorAll('span'), translateY:[18,0], opacity:[0,1], delay:anime.stagger(12), duration:420, easing:'easeOutQuad'}); }
+
+function replayIntro(){
+  const h=document.querySelector('h1');
+  const raw = h.textContent;
+  h.innerHTML = raw.split('').map(ch=>`<span style="display:inline-block">${ch}</span>`).join('');
+  anime({targets:h.querySelectorAll('span'), translateY:[18,0], opacity:[0,1], delay:anime.stagger(12), duration:420, easing:'easeOutQuad'});
+}
+
+window.addEventListener('load', ()=>{ intro(); buildBalls(); layout(true); buildPlot(); render(); wire(); explain.style.display = 'grid';
+  // animate boxes if anime is available
+  if(window.anime){ const boxes = explain.querySelectorAll('.eqbox'); anime.set(boxes,{opacity:0,translateY:8}); anime({targets:boxes, opacity:[0,1], translateY:[8,0], delay:anime.stagger(120), duration:360, easing:'easeOutQuad'}); } });
+window.addEventListener('resize', ()=>{ layout(false); if(gplotEl){ buildPlot(); plotUpdate(slider.value/100); } });
+</script>
+</body>
+</html>
