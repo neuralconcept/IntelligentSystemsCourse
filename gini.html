@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decision Tree (Gini) — Play Tennis — Detailed Slides (anime.js)</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root{ --bg:#fff; --text:#0b0f19; --muted:#6b7280; --accent:#1a73e8; --ok:#10b981; --no:#ef4444; --hi:#fef3c7; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:#fff;color:var(--text);font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial}
+    .deck{display:grid;grid-template-rows:auto 1fr auto;min-height:100vh}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;border-bottom:1px solid #e5e7eb;background:#fff}
+    .stage{display:flex;align-items:center;justify-content:center;padding:20px}
+    .slide{width:1100px;max-width:96vw;min-height:640px;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 12px 40px rgba(2,6,23,.06);overflow:hidden}
+    .controls{display:flex;gap:8px;padding:12px;border-top:1px solid #e5e7eb;background:#fff}
+    button{border:1px solid #e5e7eb;background:#fff;border-radius:10px;padding:8px 12px;font-weight:600;cursor:pointer}
+    button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+    .center{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;padding:48px;text-align:center}
+    .h1{font-size:44px;margin:0 0 8px}
+    .h2{font-size:28px;margin:0 0 10px}
+    .p{font-size:18px;margin:0}
+    .muted{color:var(--muted)}
+    .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:20px;padding:24px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;padding:24px}
+    .card{border:1px solid #e5e7eb;border-radius:12px;padding:14px;background:#fff}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:8px;border-bottom:1px solid #f3f4f6;text-align:left}
+    th{background:#f9fafb}
+    .barrow{display:grid;grid-template-columns:160px 1fr 90px;gap:10px;align-items:center;margin:8px 0}
+    .bar{height:10px;background:#e5e7eb;border-radius:6px;position:relative;overflow:hidden}
+    .bar .fill{height:100%;width:0}
+    .mono{font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Courier New", monospace}
+    .small{font-size:13px}
+    .kbd{border:1px solid #e5e7eb;border-radius:6px;padding:2px 6px;font-size:12px;background:#f9fafb}
+    svg{width:100%;height:100%}
+    .node rect{fill:#fff;stroke:#e5e7eb;stroke-width:1.5;rx:10;ry:10}
+    .node text{font-size:12px}
+    .edge{stroke:#93c5fd;stroke-width:2;fill:none}
+    .leaf-yes rect{stroke:var(--ok)} .leaf-no rect{stroke:var(--no)}
+  </style>
+</head>
+<body>
+  <div class="deck">
+    <header>
+      <div><b>Decision Tree with Gini</b> — Play Tennis (anime.js)</div>
+      <div class="muted" id="slideLabel">Slide 1/10</div>
+    </header>
+
+    <main class="stage"><div id="slide" class="slide" aria-live="polite"></div></main>
+
+    <div class="controls">
+      <button id="prev">◀ Prev</button>
+      <button id="next" class="primary">Next ▶</button>
+      <button id="play">Auto‑play</button>
+      <button id="reset">Reset</button>
+      <button id="print">Export PDF</button>
+    </div>
+  </div>
+
+<script>
+// ---------- Data ----------
+const rows = [
+  {id:1, Outlook:'Sunny',    Temp:'Hot',  Humidity:'High',   Windy:false, Play:'No'},
+  {id:2, Outlook:'Sunny',    Temp:'Hot',  Humidity:'High',   Windy:true,  Play:'No'},
+  {id:3, Outlook:'Overcast', Temp:'Hot',  Humidity:'High',   Windy:false, Play:'Yes'},
+  {id:4, Outlook:'Rain',     Temp:'Mild', Humidity:'High',   Windy:false, Play:'Yes'},
+  {id:5, Outlook:'Rain',     Temp:'Cool', Humidity:'Normal', Windy:false, Play:'Yes'},
+  {id:6, Outlook:'Rain',     Temp:'Cool', Humidity:'Normal', Windy:true,  Play:'No'},
+  {id:7, Outlook:'Overcast', Temp:'Cool', Humidity:'Normal', Windy:true,  Play:'Yes'},
+  {id:8, Outlook:'Sunny',    Temp:'Mild', Humidity:'High',   Windy:false, Play:'No'},
+  {id:9, Outlook:'Sunny',    Temp:'Cool', Humidity:'Normal', Windy:false, Play:'Yes'},
+  {id:10,Outlook:'Rain',     Temp:'Mild', Humidity:'Normal', Windy:false, Play:'Yes'},
+  {id:11,Outlook:'Sunny',    Temp:'Mild', Humidity:'Normal', Windy:true,  Play:'Yes'},
+  {id:12,Outlook:'Overcast', Temp:'Mild', Humidity:'High',   Windy:true,  Play:'Yes'},
+  {id:13,Outlook:'Overcast', Temp:'Hot',  Humidity:'Normal', Windy:false, Play:'Yes'},
+  {id:14,Outlook:'Rain',     Temp:'Mild', Humidity:'High',   Windy:true,  Play:'No'},
+];
+
+// ---------- Math helpers ----------
+function counts(data){ const y = data.filter(r=>r.Play==='Yes').length; return {Yes:y, No:data.length-y, n:data.length}; }
+function gini(data){ const {Yes,No,n} = counts(data); if(n===0) return 0; const py=Yes/n, pn=No/n; return 1-(py*py + pn*pn); }
+function groupBy(arr,key){ const m=new Map(); arr.forEach(r=>{ const v=String(r[key]); if(!m.has(v)) m.set(v,[]); m.get(v).push(r); }); return m; }
+function scoreFeature(data,feature){ const m=groupBy(data,feature); const n=data.length; let score=0; const parts=[]; m.forEach((g,k)=>{ const w=g.length/n; const gi=gini(g); score+=w*gi; parts.push({key:k,n:g.length,w,gi}); }); return {score,parts,groups:m}; }
+
+function giniMarkup(subset, totalN=null){
+  const {Yes,No,n} = counts(subset); const py = (Yes/n).toFixed(3), pn = (No/n).toFixed(3);
+  const g = gini(subset).toFixed(3);
+  const w = totalN? `, weight = ${n}/${totalN} = ${(n/totalN).toFixed(3)}` : '';
+  return `<div class="small mono">Yes=${Yes}, No=${No}, n=${n}${w}<br>pYes=${py}, pNo=${pn}<br>Gini = 1 − (pYes² + pNo²) = <b>${g}</b></div>`;
+}
+
+// ---------- Slide engine ----------
+const slide = document.getElementById('slide');
+const label = document.getElementById('slideLabel');
+let idx=0, playing=false, timer=null; const slides=[];
+function setSlide(n){ idx=Math.max(0,Math.min(n,slides.length-1)); label.textContent=`Slide ${idx+1}/${slides.length}`; slide.innerHTML=''; slides[idx].render(); reveal(slide); }
+function next(){ if(idx<slides.length-1) setSlide(idx+1); }
+function prev(){ if(idx>0) setSlide(idx-1); }
+function reset(){ stop(); setSlide(0); }
+function play(){ stop(); playing=true; const step=()=>{ if(!playing) return; if(idx===slides.length-1){ stop(); return; } next(); timer=setTimeout(step,3000); }; step(); }
+function stop(){ playing=false; if(timer) clearTimeout(timer); timer=null; }
+
+// controls + keyboard
+window.addEventListener('keydown', e=>{ if(e.code==='Space'||e.code==='ArrowRight'){ e.preventDefault(); next(); } if(e.code==='ArrowLeft'){ prev(); } });
+['next','prev','reset','play','print'].forEach(id=>{
+  const el=document.getElementById(id);
+  if(id==='next') el.onclick=next; else if(id==='prev') el.onclick=prev; else if(id==='reset') el.onclick=reset; else if(id==='play') el.onclick=play; else if(id==='print') el.onclick=()=>window.print();
+});
+
+function reveal(root){ anime.set(root,{opacity:0,translateY:20}); anime({targets:root,opacity:[0,1],translateY:[20,0],duration:500,easing:'easeOutCubic'}); }
+function pulse(el){ anime({targets:el,scale:[1,1.06,1],duration:450,easing:'easeInOutQuad'}); }
+
+// Helper: build an HTML table and return [tbody, rowPairs]
+function buildTable(target, data){
+  target.innerHTML = `<table><thead><tr><th>#</th><th>Outlook</th><th>Temp</th><th>Humidity</th><th>Windy</th><th>Play</th></tr></thead><tbody></tbody></table>`;
+  const tb = target.querySelector('tbody');
+  const pairs = data.map((r,i)=>{ const tr=document.createElement('tr'); tr.innerHTML = `<td>${r.id}</td><td>${r.Outlook}</td><td>${r.Temp}</td><td>${r.Humidity}</td><td>${r.Windy}</td><td>${r.Play}</td>`; tb.appendChild(tr); anime({targets:tr,opacity:[0,1],translateX:[-12,0],delay:i*30,duration:260}); return [tr,r]; });
+  return [tb, pairs];
+}
+
+// ---------- Slides ----------
+// 0 Theory & steps overview (new first slide)
+slides.push({render(){
+  const wrap=document.createElement('div'); wrap.className='grid-3';
+  
+  // LEFT: Theory & steps
+  const left=document.createElement('div'); left.className='card'; left.innerHTML=`<h3>Decision Tree — Theory & Steps (CART with Gini)</h3>
+    <ol class="p">
+      <li><b>Top‑down greedy growth</b>: start at the root with all rows.</li>
+      <li><b>Evaluate each candidate feature</b> F using the split <i>score</i>.</li>
+      <li><b>Pick the best feature</b> (lowest score). Create one child per value of F.</li>
+      <li><b>Recurse</b> on each child with its subset; repeat 2–3.</li>
+      <li><b>Stop</b> when the node is pure (Gini=0), min samples/depth reached, or gain < ε.</li>
+    </ol>
+    <div class="muted small">This deck uses the CART criterion with <b>Gini impurity</b>.</div>`;
+  
+  // MIDDLE: Equations (clean HTML formatting)
+  const mid=document.createElement('div'); mid.className='card'; mid.innerHTML=`<h3>Gini & Split Score — Formal definitions</h3>
+    <div class="small">Let a node <span class="mono">t</span> contain <span class="mono">n<sub>t</sub></span> samples with class proportions <span class="mono">p<sub>t,k</sub></span> for class <span class="mono">k = 1..K</span>.</div>
+    <div class="small" style="margin-top:8px">
+      <div class="eqbox" style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff;margin-bottom:8px">
+        <div style="font-size:20px;line-height:1.25">G(t) = 1 − Σ<sub>k=1</sub><sup>K</sup> p<sub>t,k</sub><sup>2</sup></div>
+        <div class="muted small">Node Gini: 0 when the node is pure; increases with class mixing. Max is 1−1/K (0.5 for binary).</div>
+      </div>
+      <div class="eqbox" style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff;margin-bottom:8px">
+        <div style="font-size:20px;line-height:1.25">Binary: G(t) = 2·p·(1−p), &nbsp; p = p<sub>t,Yes</sub></div>
+        <div class="muted small">Quadratic shape; peaked at p = 0.5.</div>
+      </div>
+      <div class="eqbox" style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff;margin-bottom:8px">
+        <div style="font-size:20px;line-height:1.25">Score(F | t) = Σ<sub>v ∈ V(F)</sub> ( n<sub>t,v</sub> / n<sub>t</sub> ) · G(t<sub>v</sub>)</div>
+        <div class="muted small">Weighted child impurity after splitting by feature F. Lower is better.</div>
+      </div>
+      <div class="eqbox" style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff">
+        <div style="font-size:20px;line-height:1.25">Gain(F | t) = G(t) − Score(F | t)</div>
+        <div class="muted small">Equivalent view: maximizing gain vs. minimizing score.</div>
+      </div>
+    </div>
+    <div class="small" style="margin-top:10px"><b>Numerical example (root):</b> p<sub>Yes</sub>=9/14, p<sub>No</sub>=5/14 ⇒ G(root)= 1 − (9/14)<sup>2</sup> − (5/14)<sup>2</sup> ≈ 0.459.</div>`;
+  
+  // RIGHT: Mini tree + rules
+  const right=document.createElement('div'); right.className='card'; right.innerHTML=`<h3>Mini decision tree & rules</h3>
+    <div id="miniTree" style="height:260px;border:1px solid #e5e7eb;border-radius:10px;overflow:hidden;margin-bottom:10px"></div>
+    <div class="small"><b>Rules (human‑readable)</b>
+      <ol class="p">
+        <li>If <b>Outlook = Overcast</b> → Play = <b>Yes</b></li>
+        <li>If <b>Outlook = Sunny</b> & <b>Humidity = High</b> → <b>No</b>; else if <b>Humidity = Normal</b> → <b>Yes</b></li>
+        <li>If <b>Outlook = Rain</b> & <b>Windy = False</b> → <b>Yes</b>; else if <b>Windy = True</b> → <b>No</b></li>
+      </ol>
+    </div>`;
+  
+  wrap.appendChild(left); wrap.appendChild(mid); wrap.appendChild(right); slide.appendChild(wrap);
+
+  // Animations
+  anime({targets: left.querySelectorAll('li'), opacity:[0,1], translateX:[-8,0], delay: anime.stagger(120), duration: 300, easing:'easeOutCubic'});
+  anime({targets: mid.querySelectorAll('.eqbox'), opacity:[0,1], translateY:[6,0], delay: anime.stagger(120, {start: 200}), duration: 360, easing:'easeOutQuad'});
+
+  // Draw mini tree
+  const host = right.querySelector('#miniTree');
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('viewBox','0 0 520 260'); host.appendChild(svg);
+  const edges=document.createElementNS('http://www.w3.org/2000/svg','g'); const nodes=document.createElementNS('http://www.w3.org/2000/svg','g'); svg.appendChild(edges); svg.appendChild(nodes);
+  function node(x,y,title,sub,cls=''){ const g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.setAttribute('class','node '+cls); const r=document.createElementNS('http://www.w3.org/2000/svg','rect'); r.setAttribute('x',x-110); r.setAttribute('y',y-22); r.setAttribute('width',220); r.setAttribute('height',44); const t1=document.createElementNS('http://www.w3.org/2000/svg','text'); t1.setAttribute('x',x); t1.setAttribute('y',y-4); t1.setAttribute('text-anchor','middle'); t1.textContent=title; const t2=document.createElementNS('http://www.w3.org/2000/svg','text'); t2.setAttribute('x',x); t2.setAttribute('y',y+14); t2.setAttribute('text-anchor','middle'); t2.textContent=sub; g.appendChild(r); g.appendChild(t1); g.appendChild(t2); nodes.appendChild(g); anime.set(g,{opacity:0,translateY:6}); anime({targets:g,opacity:[0,1],translateY:[6,0],duration:420}); }
+  function edge(x1,y1,x2,y2,label){ const p=document.createElementNS('http://www.w3.org/2000/svg','path'); const d=`M ${x1} ${y1} C ${x1} ${y1+40}, ${(x1+x2)/2} ${y2-20}, ${x2} ${y2-8}`; p.setAttribute('d',d); p.setAttribute('class','edge'); svg.appendChild(p); const t=document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x',(x1+x2)/2); t.setAttribute('y',(y1+y2)/2); t.textContent=label; svg.appendChild(t); anime.set(p,{strokeDasharray:'800',strokeDashoffset:800,opacity:0}); anime({targets:p,strokeDashoffset:[800,0],opacity:[0,1],duration:600}); anime({targets:t,opacity:[0,1],delay:200,duration:350}); }
+  const over=rows.filter(r=>r.Outlook==='Overcast'); const sun=rows.filter(r=>r.Outlook==='Sunny'); const rain=rows.filter(r=>r.Outlook==='Rain');
+  node(260,40,'Root: Outlook',`n=${rows.length} | Gini=${gini(rows).toFixed(3)}`);
+  node(100,140,'Sunny',`n=${sun.length} | Gini=${gini(sun).toFixed(3)}`); edge(260,62,100,128,'Sunny');
+  node(260,140,'Overcast','Leaf → Yes','leaf-yes'); edge(260,62,260,128,'Overcast');
+  node(420,140,'Rain',`n=${rain.length} | Gini=${gini(rain).toFixed(3)}`); edge(260,62,420,128,'Rain');
+  node(40,220,'Humidity = High','Leaf → No','leaf-no'); edge(100,160,40,206,'High');
+  node(160,220,'Humidity = Normal','Leaf → Yes','leaf-yes'); edge(100,160,160,206,'Normal');
+  node(360,220,'Windy = False','Leaf → Yes','leaf-yes'); edge(420,160,360,206,'False');
+  node(480,220,'Windy = True','Leaf → No','leaf-no'); edge(420,160,480,206,'True');
+}});
+
+// 1 Title
+slides.push({render(){
+  const c=document.createElement('div'); c.className='center';
+  c.innerHTML=`<h1 class="h1">Decision Trees with <span style="color:var(--accent)">Gini</span></h1>
+  <p class="p">Animated step‑by‑step using the classic <b>Play Tennis</b> dataset</p>
+  <p class="muted" style="margin-top:6px">Space/→ to advance. White background, projector‑ready.</p>`;
+  slide.appendChild(c);
+  const h=c.querySelector('.h1'); const text=h.innerText; h.innerHTML=text.split('').map(ch=>`<span style="display:inline-block">${ch}</span>`).join('');
+  anime({targets:h.querySelectorAll('span'), translateY:[12,0], opacity:[0,1], delay:anime.stagger(18), duration:420, easing:'easeOutQuad'});
+}});
+
+// 2 Dataset (static overview)
+slides.push({render(){
+  const wrap=document.createElement('div'); wrap.className='grid-2';
+  const a=document.createElement('div'); a.className='card'; a.innerHTML=`<h3>Dataset (n=14)</h3><div id="t" style="max-height:460px;overflow:auto"></div>`;
+  const b=document.createElement('div'); b.className='card'; b.innerHTML=`<h3>Target</h3><p class="p">Predict <b>Play</b> ∈ {Yes, No}</p><div class="mono" id="dist" style="margin-top:8px"></div>`;
+  wrap.appendChild(a); wrap.appendChild(b); slide.appendChild(wrap);
+  const [tb,pairs] = buildTable(a.querySelector('#t'), rows);
+  const c=counts(rows); b.querySelector('#dist').textContent=`Yes=${c.Yes}, No=${c.No}  →  p(Yes)=${(c.Yes/c.n).toFixed(2)}, p(No)=${(c.No/c.n).toFixed(2)}`;
+}});
+
+// 3 Animated: root counts & Gini from the table
+slides.push({render(){
+  const w=document.createElement('div'); w.className='grid-2';
+  const a=document.createElement('div'); a.className='card'; a.innerHTML=`<h3>Root — count directly from the table</h3><div id="t" style="max-height:460px;overflow:auto"></div>`;
+  const b=document.createElement('div'); b.className='card'; b.innerHTML=`<h3>Step‑by‑step calculation</h3>
+    <div class="mono small">1) Count <b>Yes</b>: <span id="y">0</span><br>2) Count <b>No</b>: <span id="n">0</span><br>3) pYes = <span id="py">0</span>, pNo = <span id="pn">0</span><br>4) Gini = 1 − (pYes² + pNo²) = <b id="g">0</b></div>
+    <div class="muted small" style="margin-top:8px">Tip: Gini is 0 if all labels are identical; it reaches 0.5 at a 50/50 split (binary).</div>`;
+  w.appendChild(a); w.appendChild(b); slide.appendChild(w);
+  const [tb,pairs] = buildTable(a.querySelector('#t'), rows);
+  const yesEl=b.querySelector('#y'), noEl=b.querySelector('#n'), pyEl=b.querySelector('#py'), pnEl=b.querySelector('#pn'), gEl=b.querySelector('#g');
+  const N = rows.length; let y=0, n=0;
+  // Step A: highlight YES rows incrementally
+  const yesPairs = pairs.filter(([tr,r])=>r.Play==='Yes');
+  yesPairs.forEach(([tr,r],i)=>{ setTimeout(()=>{ anime({targets:tr, backgroundColor:['#fff','#ECFDF5'], duration:220}); y++; yesEl.textContent=y; }, i*140); });
+  const t1 = yesPairs.length*140 + 350;
+  // Step B: compute pYes
+  setTimeout(()=>{ const py=y/N; anime({targets:pyEl, innerHTML:[0, py.toFixed(3)], round:1000, duration:600, easing:'easeOutExpo'}); }, t1);
+  // Step C: highlight NO rows
+  setTimeout(()=>{
+    const noPairs = pairs.filter(([tr,r])=>r.Play==='No');
+    noPairs.forEach(([tr,r],i)=>{ setTimeout(()=>{ anime({targets:tr, backgroundColor:['#fff','#FEF2F2'], duration:220}); n++; noEl.textContent=n; }, i*140); });
+    const t2 = noPairs.length*140 + 300;
+    // Step D: compute pNo and Gini
+    setTimeout(()=>{ const pn=n/N; anime({targets:pnEl, innerHTML:[0, pn.toFixed(3)], round:1000, duration:600, easing:'easeOutExpo'}); const G = (1 - ( (y/N)*(y/N) + (n/N)*(n/N) )).toFixed(3); anime({targets:gEl, innerHTML:[0, G], round:1000, duration:700, easing:'easeOutExpo'}); }, t2);
+  }, t1+200);
+}});
+
+// 4 Gini definition — deeper explanation + binary intuition with graph
+slides.push({render(){
+  const w=document.createElement('div'); w.className='grid-2';
+  const a=document.createElement('div'); a.className='card'; a.innerHTML=`<h3>What is Gini impurity?</h3>
+  <div class="eqbox" style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff;margin-bottom:10px">
+    <div class="p mono">Gini(t) = 1 − Σ p_k² = Σ p_k (1 − p_k)</div>
+  </div>
+  <ul class="p small" style="margin-top:4px">
+    <li><b>Meaning:</b> measures how <i>mixed</i> the labels are in a node <span class="mono">t</span>. <b>0</b> means pure (all samples same class).</li>
+    <li><b>Range:</b> 0 ≤ Gini ≤ 1 − 1/K (max is <b>0.5</b> for binary K=2).</li>
+    <li><b>Probabilistic view:</b> probability that two independent random draws from the node have <b>different</b> labels: <span class="mono">1 − Σ p_k²</span>.</li>
+    <li><b>Sensitivity:</b> increases smoothly as the class distribution becomes more balanced; less sensitive to rare classes than entropy.</li>
+    <li><b>Why minimize it?</b> Lower weighted child impurity ⇒ purer children ⇒ simpler, more confident decisions.</li>
+  </ul>`;
+  const b=document.createElement('div'); b.className='card'; b.innerHTML=`<h3>Binary intuition</h3>
+  <div class="eqbox" style="border:1px solid #e5e7eb;border-radius:10px;padding:10px;background:#fff;margin-bottom:8px">
+    <div class="p mono">Let p = P(Yes):&nbsp; Gini(t) = 2·p·(1−p)</div>
+    <div class="small muted">Zeros at p=0 and p=1 (pure). Symmetric peak at p=0.5 where Gini=0.5 (most mixed).</div>
+  </div>
+  <div id="gplot" style="height:220px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px;position:relative;overflow:hidden"></div>
+  <div class="small mono" id="gex">Example: p(Yes)=9/14≈0.643 ⇒ 2·0.643·0.357 ≈ <b>0.459</b></div>
+  <div class="small mono" id="gtab" style="margin-top:6px"></div>`;
+  w.appendChild(a); w.appendChild(b); slide.appendChild(w);
+
+  // Build the mini graph of Gini(p) = 2p(1-p)
+  const host=b.querySelector('#gplot'); const W=520, H=220, m=28; const x0=m, y0=H-m, x1=W-m, y1=m;
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('viewBox',`0 0 ${W} ${H}`); host.appendChild(svg);
+  function xy(p){ const x=x0+(x1-x0)*p; const y=y0-(y0-y1)*(2*p*(1-p)/0.5); return [x,y]; } // scale y by max 0.5
+  // Axes
+  const ax=document.createElementNS('http://www.w3.org/2000/svg','path'); ax.setAttribute('d',`M ${x0} ${y0} H ${x1} M ${x0} ${y0} V ${y1}`); ax.setAttribute('stroke','#e5e7eb'); ax.setAttribute('fill','none'); svg.appendChild(ax);
+  // Curve path
+  let d='M '+xy(0).join(' '); const N=80; for(let i=1;i<=N;i++){ const p=i/N; const [x,y]=xy(p); d+=` L ${x} ${y}`; }
+  const path=document.createElementNS('http://www.w3.org/2000/svg','path'); path.setAttribute('d',d); path.setAttribute('stroke','#1a73e8'); path.setAttribute('fill','none'); path.setAttribute('stroke-width','2'); svg.appendChild(path);
+  anime.set(path,{strokeDasharray:1000,strokeDashoffset:1000}); anime({targets:path,strokeDashoffset:[1000,0],duration:800,easing:'easeOutCubic'});
+  // Key points
+  const pts=[0,0.5,1]; pts.forEach((p,i)=>{ const [x,y]=xy(p); const c=document.createElementNS('http://www.w3.org/2000/svg','circle'); c.setAttribute('cx',x); c.setAttribute('cy',y); c.setAttribute('r',3.5); c.setAttribute('fill', i===1? '#1a73e8':'#9ca3af'); svg.appendChild(c); });
+  // Example marker at p = 9/14
+  const pEx=9/14; const [xe,ye]=xy(pEx); const dot=document.createElementNS('http://www.w3.org/2000/svg','circle'); dot.setAttribute('cx',xe); dot.setAttribute('cy',ye); dot.setAttribute('r',5); dot.setAttribute('fill','#10b981'); svg.appendChild(dot);
+  const lbl=document.createElementNS('http://www.w3.org/2000/svg','text'); lbl.setAttribute('x',xe+8); lbl.setAttribute('y',ye-8); lbl.setAttribute('class','mono'); lbl.textContent='p≈0.643, G≈0.459'; svg.appendChild(lbl);
+  anime.set(dot,{scale:0}); anime({targets:dot,scale:[0,1],duration:400,delay:600,easing:'easeOutBack'});
+
+  // Numeric table for intuition
+  const vals=[0,0.2,0.4,0.5,0.6,0.8,1]; const rowsHtml = vals.map(v=>`p=${v.toFixed(1)} → 2·p·(1−p)=${(2*v*(1-v)).toFixed(3)}`).join('  |  ');
+  b.querySelector('#gtab').textContent=rowsHtml;
+}});
+
+// 5 Score each feature (weighted Gini) (weighted Gini)
+slides.push({render(){
+  const w=document.createElement('div'); w.className='card'; w.innerHTML=`<h3>Which feature to split at the root?</h3><div id="bars"></div><div class="mono small" id="best" style="margin-top:8px"></div>`; slide.appendChild(w);
+  const feats=['Outlook','Temp','Humidity','Windy']; const bars=w.querySelector('#bars');
+  const results=feats.map(f=>({f, ...scoreFeature(rows,f)})).sort((a,b)=>a.score-b.score);
+  const max=Math.max(...results.map(r=>r.score));
+  results.forEach((r,i)=>{ const row=document.createElement('div'); row.className='barrow'; const lab=document.createElement('div'); lab.textContent=r.f; lab.style.fontWeight='600'; const bar=document.createElement('div'); bar.className='bar'; const fill=document.createElement('div'); fill.className='fill'; fill.style.background=i===0?'#1a73e8':'#e5e7eb'; bar.appendChild(fill); const val=document.createElement('div'); val.className='mono'; val.textContent=r.score.toFixed(3); row.appendChild(lab); row.appendChild(bar); row.appendChild(val); bars.appendChild(row); anime({targets:fill, width:[0, `${(r.score/max)*100}%`], duration:700, delay:i*120, easing:'easeOutCubic'}); });
+  const best=results[0]; const parts=best.parts.map(p=>`(${p.n}/${rows.length})·${p.gi.toFixed(3)}`).join(' + ');
+  w.querySelector('#best').innerHTML=`Best split = <b>${best.f}</b> → ${parts} = <b>${best.score.toFixed(3)}</b>`; pulse(w.querySelector('#best'));
+}});
+
+// 6 Animated from table: weighted Gini for Outlook (step‑by‑step)
+slides.push({render(){
+  const wrap=document.createElement('div'); wrap.className='grid-2';
+  const a=document.createElement('div'); a.className='card'; a.innerHTML=`<h3>All rows — highlight each Outlook group</h3><div id="t" style="max-height:460px;overflow:auto"></div>`;
+  const b=document.createElement('div'); b.className='card'; b.innerHTML=`<h3>Score(Outlook) = Σ (n_v/n)·Gini(v)</h3><div id="steps"></div><div class="mono small" id="sum" style="margin-top:8px"></div>`;
+  wrap.appendChild(a); wrap.appendChild(b); slide.appendChild(wrap);
+  const [tb,pairs] = buildTable(a.querySelector('#t'), rows);
+  const order = ['Sunny','Overcast','Rain'];
+  const n = rows.length; let total = 0; const steps=b.querySelector('#steps');
+  function clearHighlights(){ pairs.forEach(([tr])=>{ anime({targets:tr, backgroundColor:['#fff','#fff'], duration:200}); }); }
+  function doGroup(name, delay){ const subset = rows.filter(r=>r.Outlook===name); const match = pairs.filter(([tr,r])=>r.Outlook===name);
+    match.forEach(([tr],i)=>{ setTimeout(()=>{ anime({targets:tr, backgroundColor:['#fff', name==='Overcast'?'#ECFDF5':'#FEF3C7'], duration:220}); }, i*80 + delay); });
+    const Gi = gini(subset); const term = (subset.length/n)*Gi; total += term;
+    const card = document.createElement('div'); card.className='card'; card.innerHTML = `<b>Group: ${name}</b>${giniMarkup(subset, n)}<div class="mono small">Contribution = (${subset.length}/${n}) × ${Gi.toFixed(3)} = <b>${term.toFixed(3)}</b></div>`; steps.appendChild(card);
+  }
+  let t=300; order.forEach((name,idx)=>{ doGroup(name, t); t += pairs.length*15 + 600; setTimeout(()=>{ clearHighlights(); }, t-300); });
+  setTimeout(()=>{ b.querySelector('#sum').innerHTML = `<b>Total Score(Outlook) = ${total.toFixed(3)}</b>`; pulse(b.querySelector('#sum')); }, t+300);
+}});
+
+// 7 Draw root split
+slides.push({render(){
+  const host=document.createElement('div'); host.className='card'; host.style.height='560px'; host.innerHTML='<h3>Split on Outlook</h3><div id="tree" style="height:500px"></div>'; slide.appendChild(host);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('viewBox','0 0 1100 500'); host.querySelector('#tree').appendChild(svg);
+  const edges=document.createElementNS('http://www.w3.org/2000/svg','g'); const nodes=document.createElementNS('http://www.w3.org/2000/svg','g'); svg.appendChild(edges); svg.appendChild(nodes);
+  function node(x,y,title,sub,cls=''){ const g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.setAttribute('class','node '+cls); const r=document.createElementNS('http://www.w3.org/2000/svg','rect'); r.setAttribute('x',x-180); r.setAttribute('y',y-28); r.setAttribute('width',360); r.setAttribute('height',56); const t1=document.createElementNS('http://www.w3.org/2000/svg','text'); t1.setAttribute('x',x); t1.setAttribute('y',y-4); t1.setAttribute('text-anchor','middle'); t1.textContent=title; const t2=document.createElementNS('http://www.w3.org/2000/svg','text'); t2.setAttribute('x',x); t2.setAttribute('y',y+16); t2.setAttribute('text-anchor','middle'); t2.textContent=sub; g.appendChild(r); g.appendChild(t1); g.appendChild(t2); nodes.appendChild(g); anime.set(g,{opacity:0,translateY:10}); anime({targets:g,opacity:[0,1],translateY:[10,0],duration:450}); }
+  function edge(x1,y1,x2,y2,label){ const p=document.createElementNS('http://www.w3.org/2000/svg','path'); const d=`M ${x1} ${y1} C ${x1} ${y1+60}, ${(x1+x2)/2} ${y2-40}, ${x2} ${y2-10}`; p.setAttribute('d',d); p.setAttribute('class','edge'); edges.appendChild(p); const t=document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x',(x1+x2)/2); t.setAttribute('y',(y1+y2)/2); t.textContent=label; svg.appendChild(t); anime.set(p,{strokeDasharray:'1000',strokeDashoffset:1000,opacity:0}); anime({targets:p,strokeDashoffset:[1000,0],opacity:[0,1],duration:600,easing:'easeOutCubic'}); anime({targets:t,opacity:[0,1],translateY:[6,0],delay:200,duration:400}); }
+  const over=rows.filter(r=>r.Outlook==='Overcast'); const sun=rows.filter(r=>r.Outlook==='Sunny'); const rain=rows.filter(r=>r.Outlook==='Rain');
+  node(550,70,'Root: Outlook',`n=${rows.length} | Gini=${gini(rows).toFixed(3)}`);
+  node(250,260,'Sunny',`n=${sun.length} | Gini=${gini(sun).toFixed(3)}`); edge(550,98,250,232,'Sunny');
+  node(550,260,'Overcast','Leaf → Yes','leaf-yes'); edge(550,98,550,232,'Overcast');
+  node(850,260,'Rain',`n=${rain.length} | Gini=${gini(rain).toFixed(3)}`); edge(550,98,850,232,'Rain');
+}});
+
+// 8 Sunny subset — why Humidity (bars)
+slides.push({render(){
+  const sun=rows.filter(r=>r.Outlook==='Sunny'); const feats=['Temp','Humidity','Windy']; const res=feats.map(f=>({f, ...scoreFeature(sun,f)})).sort((a,b)=>a.score-b.score);
+  const w=document.createElement('div'); w.className='card'; w.innerHTML='<h3>Sunny subset — choose next split</h3><div id="bars"></div><div class="mono small" id="best"></div>'; slide.appendChild(w);
+  const max=Math.max(...res.map(r=>r.score)); const bars=w.querySelector('#bars');
+  res.forEach((r,i)=>{ const row=document.createElement('div'); row.className='barrow'; const lab=document.createElement('div'); lab.textContent=r.f; lab.style.fontWeight='600'; const bar=document.createElement('div'); bar.className='bar'; const fill=document.createElement('div'); fill.className='fill'; fill.style.background=i===0?'#1a73e8':'#e5e7eb'; bar.appendChild(fill); const val=document.createElement('div'); val.className='mono'; val.textContent=r.score.toFixed(3); row.appendChild(lab); row.appendChild(bar); row.appendChild(val); bars.appendChild(row); anime({targets:fill,width:[0,`${(r.score/max)*100}%`],duration:650,delay:i*120,easing:'easeOutCubic'}); });
+  const best=res[0]; const parts=best.parts.map(p=>`(${p.n}/${sun.length})·${p.gi.toFixed(3)}`).join(' + ');
+  w.querySelector('#best').innerHTML=`Choose <b>${best.f}</b> → ${parts} = <b>${best.score.toFixed(3)}</b>`; pulse(w.querySelector('#best'));
+}});
+
+// 9 Sunny subset — animated calculation from the subset table
+slides.push({render(){
+  const sun=rows.filter(r=>r.Outlook==='Sunny');
+  const wrap=document.createElement('div'); wrap.className='grid-2';
+  const a=document.createElement('div'); a.className='card'; a.innerHTML=`<h3>Sunny rows only</h3><div id="t" style="max-height:420px;overflow:auto"></div>`;
+  const b=document.createElement('div'); b.className='card'; b.innerHTML=`<h3>Score(Humidity | Sunny)</h3><div id="steps"></div><div class="mono small" id="sum" style="margin-top:8px"></div>`;
+  wrap.appendChild(a); wrap.appendChild(b); slide.appendChild(wrap);
+  const [tb,pairs] = buildTable(a.querySelector('#t'), sun);
+  const order=['High','Normal']; const n=sun.length; let total=0; const steps=b.querySelector('#steps');
+  function clear(){ pairs.forEach(([tr])=>anime({targets:tr, backgroundColor:['#fff','#fff'], duration:200})); }
+  function doGroup(val, delay){ const subset=sun.filter(r=>r.Humidity===val); const match=pairs.filter(([tr,r])=>r.Humidity===val);
+    match.forEach(([tr],i)=>{ setTimeout(()=>anime({targets:tr, backgroundColor:['#fff', val==='High' ? '#FEF2F2':'#ECFDF5'], duration:220}), i*80 + delay); });
+    const Gi=gini(subset); const term=(subset.length/n)*Gi; total+=term; const card=document.createElement('div'); card.className='card'; card.innerHTML=`<b>Humidity = ${val}</b>${giniMarkup(subset, n)}<div class="mono small">Contribution = (${subset.length}/${n}) × ${Gi.toFixed(3)} = <b>${term.toFixed(3)}</b></div>`; steps.appendChild(card);
+  }
+  let t=300; order.forEach((v)=>{ doGroup(v,t); t+=pairs.length*15+600; setTimeout(()=>clear(), t-300); });
+  setTimeout(()=>{ b.querySelector('#sum').innerHTML = `<b>Total = ${total.toFixed(3)} (lowest among candidates)</b>`; pulse(b.querySelector('#sum')); }, t+200);
+}});
+
+// 10 Sunny leaves
+slides.push({render(){
+  const sun=rows.filter(r=>r.Outlook==='Sunny'); const w=document.createElement('div'); w.className='card'; w.style.height='360px'; w.innerHTML='<h3>Sunny → split by Humidity</h3><div id="tree" style="height:300px"></div>'; slide.appendChild(w);
+  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg'); svg.setAttribute('viewBox','0 0 1000 300'); w.querySelector('#tree').appendChild(svg);
+  const edges=document.createElementNS('http://www.w3.org/2000/svg','g'); const nodes=document.createElementNS('http://www.w3.org/2000/svg','g'); svg.appendChild(edges); svg.appendChild(nodes);
+  function node(x,y,title,sub,cls=''){ const g=document.createElementNS('http://www.w3.org/2000/svg','g'); g.setAttribute('class','node '+cls); const r=document.createElementNS('http://www.w3.org/2000/svg','rect'); r.setAttribute('x',x-170); r.setAttribute('y',y-24); r.setAttribute('width',340); r.setAttribute('height',48); const t1=document.createElementNS('http://www.w3.org/2000/svg','text'); t1.setAttribute('x',x); t1.setAttribute('y',y-2); t1.setAttribute('text-anchor','middle'); t1.textContent=title; const t2=document.createElementNS('http://www.w3.org/2000/svg','text'); t2.setAttribute('x',x); t2.setAttribute('y',y+16); t2.setAttribute('text-anchor','middle'); t2.textContent=sub; g.appendChild(r); g.appendChild(t1); g.appendChild(t2); nodes.appendChild(g); anime.set(g,{opacity:0,translateY:8}); anime({targets:g,opacity:[0,1],translateY:[8,0],duration:420}); }
+  function edge(x1,y1,x2,y2,label){ const p=document.createElementNS('http://www.w3.org/2000/svg','path'); const d=`M ${x1} ${y1} C ${x1} ${y1+40}, ${(x1+x2)/2} ${y2-20}, ${x2} ${y2-8}`; p.setAttribute('d',d); p.setAttribute('class','edge'); svg.appendChild(p); const t=document.createElementNS('http://www.w3.org/2000/svg','text'); t.setAttribute('x',(x1+x2)/2); t.setAttribute('y',(y1+y2)/2); t.textContent=label; svg.appendChild(t); anime.set(p,{strokeDasharray:'1000',strokeDashoffset:1000,opacity:0}); anime({targets:p,strokeDashoffset:[1000,0],opacity:[0,1],duration:600}); anime({targets:t,opacity:[0,1],delay:200,duration:350}); }
+  node(480,60,'Sunny node',`n=${sun.length} | Gini=${gini(sun).toFixed(3)}`);
+  node(220,220,'Humidity = High','Leaf → No','leaf-no'); edge(480,84,220,196,'High');
+  node(740,220,'Humidity = Normal','Leaf → Yes','leaf-yes'); edge(480,84,740,196,'Normal');
+}});
+
+// 11 Rain subset — why Windy (bars)
+slides.push({render(){
+  const rain=rows.filter(r=>r.Outlook==='Rain'); const res=['Temp','Humidity','Windy'].map(f=>({f,...scoreFeature(rain,f)})).sort((a,b)=>a.score-b.score);
+  const w=document.createElement('div'); w.className='card'; w.innerHTML='<h3>Rain subset — choose next split</h3><div id="bars"></div><div class="mono small" id="best"></div>'; slide.appendChild(w);
+  const max=Math.max(...res.map(r=>r.score)); const bars=w.querySelector('#bars'); res.forEach((r,i)=>{ const row=document.createElement('div'); row.className='barrow'; const lab=document.createElement('div'); lab.textContent=r.f; lab.style.fontWeight='600'; const bar=document.createElement('div'); bar.className='bar'; const fill=document.createElement('div'); fill.className='fill'; fill.style.background=i===0?'#1a73e8':'#e5e7eb'; bar.appendChild(fill); const val=document.createElement('div'); val.className='mono'; val.textContent=r.score.toFixed(3); row.appendChild(lab); row.appendChild(bar); row.appendChild(val); bars.appendChild(row); anime({targets:fill,width:[0,`${(r.score/max)*100}%`],duration:650,delay:i*120}); });
+  const best=res[0]; const parts=best.parts.map(p=>`(${p.n}/${rain.length})·${p.gi.toFixed(3)}`).join(' + '); w.querySelector('#best').innerHTML=`Choose <b>${best.f}</b> → ${parts} = <b>${best.score.toFixed(3)}</b>`; pulse(w.querySelector('#best'));
+}});
+
+// 12 Rain subset — animated calculation from the subset table
+slides.push({render(){
+  const rain=rows.filter(r=>r.Outlook==='Rain');
+  const wrap=document.createElement('div'); wrap.className='grid-2';
+  const a=document.createElement('div'); a.className='card'; a.innerHTML=`<h3>Rain rows only</h3><div id="t" style="max-height:420px;overflow:auto"></div>`;
+  const b=document.createElement('div'); b.className='card'; b.innerHTML=`<h3>Score(Windy | Rain)</h3><div id="steps"></div><div class="mono small" id="sum" style="margin-top:8px"></div>`;
+  wrap.appendChild(a); wrap.appendChild(b); slide.appendChild(wrap);
+  const [tb,pairs] = buildTable(a.querySelector('#t'), rain);
+  const order=[false,true]; const n=rain.length; let total=0; const steps=b.querySelector('#steps');
+  function clear(){ pairs.forEach(([tr])=>anime({targets:tr, backgroundColor:['#fff','#fff'], duration:200})); }
+  function doGroup(val, delay){ const subset=rain.filter(r=>r.Windy===val); const match=pairs.filter(([tr,r])=>r.Windy===val);
+    match.forEach(([tr],i)=>{ setTimeout(()=>anime({targets:tr, backgroundColor:['#fff', val? '#FEF2F2':'#ECFDF5'], duration:220}), i*80 + delay); });
+    const Gi=gini(subset); const term=(subset.length/n)*Gi; total+=term; const card=document.createElement('div'); card.className='card'; card.innerHTML=`<b>Windy = ${val}</b>${giniMarkup(subset, n)}<div class="mono small">Contribution = (${subset.length}/${n}) × ${Gi.toFixed(3)} = <b>${term.toFixed(3)}</b></div>`; steps.appendChild(card);
+  }
+  let t=300; order.forEach((v)=>{ doGroup(v,t); t+=pairs.length*15+600; setTimeout(()=>clear(), t-300); });
+  setTimeout(()=>{ b.querySelector('#sum').innerHTML = `<b>Total = ${total.toFixed(3)} (lowest among candidates)</b>`; pulse(b.querySelector('#sum')); }, t+200);
+}});
+
+// 13 Final tree + rules
+slides.push({render(){
+  const w=document.createElement('div'); w.className='grid-2';
+  const a=document.createElement('div'); a.className='card'; a.innerHTML='<h3>Final tree (summary)</h3><ul class="p"><li>Root: Outlook</li><li>Sunny → Humidity</li><li>Rain → Windy</li><li>Overcast → Yes</li></ul>';
+  const b=document.createElement('div'); b.className='card'; b.innerHTML='<h3>Rules</h3><ol class="p"><li>If Outlook = Overcast → Play = <b>Yes</b></li><li>If Outlook = Sunny & Humidity = High → <b>No</b>; if Normal → <b>Yes</b></li><li>If Outlook = Rain & Windy = False → <b>Yes</b>; if True → <b>No</b></li></ol><p class="muted">Greedy top‑down: choose the feature with the lowest weighted Gini at each node.</p>';
+  w.appendChild(a); w.appendChild(b); slide.appendChild(w);
+}});
+
+// boot
+setTimeout(()=>setSlide(0),0);
+</script>
+</body>
+</html>
