@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Decision Tree with Gini — Step‑by‑Step (anime.js)</title>
+  <!-- anime.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" defer></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f1221;
+      --panel: #151935;
+      --panel-2: #1a1f47;
+      --text: #e6e6f0;
+      --muted: #a5a7c2;
+      --accent: #7c9cff;
+      --accent-2: #83ffd8;
+      --good: #18c29c;
+      --bad: #ff6b6b;
+      --yellow: #ffd166;
+      --ring: rgba(124,156,255,.35);
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(2000px 1200px at 80% -200px, #1b2150 0%, var(--bg) 35%, #090b17 100%);
+      color: var(--text);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 18px;
+      padding: 18px;
+      max-width: 1280px;
+      margin: 0 auto;
+    }
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.0));
+      border: 1px solid rgba(255,255,255,.06);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25), inset 0 1px rgba(255,255,255,.06);
+      backdrop-filter: blur(6px);
+    }
+    h1 { font-size: 20px; margin: 0; letter-spacing: .2px; }
+    h1 span { color: var(--accent); }
+
+    .panel {
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35), inset 0 1px rgba(255,255,255,.06);
+      overflow: hidden;
+    }
+    .left { padding: 16px 16px 10px; display: flex; flex-direction: column; gap: 10px; }
+    .controls { display: flex; gap: 8px; flex-wrap: wrap; }
+    button {
+      appearance: none; border: 0; cursor: pointer; color: var(--text);
+      background: #232955; padding: 10px 12px; border-radius: 12px; font-weight: 600;
+      letter-spacing: .2px; transition: transform .08s ease, box-shadow .2s ease, background .2s ease;
+      box-shadow: 0 6px 16px rgba(0,0,0,.24), inset 0 0 0 1px rgba(124,156,255,.25);
+    }
+    button:hover { transform: translateY(-1px); background: #2a3170; }
+    button:active { transform: translateY(0); }
+    button.secondary { background: #1d2042; }
+
+    .legend { display:flex; gap: 12px; align-items:center; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+    .chip { display:inline-flex; align-items:center; gap:6px; padding:6px 10px; background:#101335; border-radius:999px; border:1px solid rgba(255,255,255,.08);} 
+    .dot { width:10px; height:10px; border-radius: 50%; display:inline-block; }
+    .dot.c0 { background:#7aa2ff; }
+    .dot.c1 { background:#ff7aa2; }
+
+    .step-list { display:flex; flex-direction:column; gap:6px; margin-top: 6px; }
+    .step { padding: 10px 12px; background:#12163a; border-radius: 12px; border:1px solid rgba(255,255,255,.06); color:#cbd0ff; font-size: 13px; }
+    .step.active { border-color: var(--accent); box-shadow: 0 0 0 3px var(--ring); color: #fff; }
+
+    .viz { position: relative; padding: 12px; }
+    .viz-head { display:flex; justify-content: space-between; align-items:center; padding: 10px 12px; border-bottom:1px solid rgba(255,255,255,.06); }
+    .viz-grid { padding: 10px; min-height: 560px; position: relative; }
+
+    .box { position: relative; height: 520px; border-radius: 14px; border:1px solid rgba(255,255,255,.08); background: #0e1336; overflow: hidden; }
+    svg { width: 100%; height: 100%; display: block; }
+    .calc {
+      margin-top: 10px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background:#0e1336; border-radius: 12px; border:1px solid rgba(255,255,255,.08); padding: 10px; color:#d9dcff; font-size: 13px;
+    }
+    .kpi-row { display:flex; gap: 8px; flex-wrap: wrap; }
+    .kpi { flex:1; min-width: 160px; background:#0e1336; border:1px solid rgba(255,255,255,.08); padding: 10px; border-radius: 12px; }
+    .kpi b { font-size: 22px; display:block; margin-top: 6px; }
+    .rule-card { background:#0e1336; border:1px solid rgba(255,255,255,.08); border-radius: 12px; padding: 10px; }
+    .rule-card code { color:#c5ffd6; }
+
+    .pill { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border-radius:999px; border:1px solid rgba(255,255,255,.1); background:#12163a; font-size:12px; color:#cfd3ff; }
+    .formula { color:#cfd3ff; }
+
+    .footer-note { color: var(--muted); font-size: 12px; margin-top: 8px; }
+
+    @media (max-width: 980px) {
+      .app { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1><span>Interactive</span> Decision Tree — Gini Impurity (anime.js)</h1>
+      <div class="legend">
+        <span class="chip"><span class="dot c0"></span> class = 0</span>
+        <span class="chip"><span class="dot c1"></span> class = 1</span>
+        <span class="chip">Gini: <strong id="gini-root">—</strong></span>
+      </div>
+    </header>
+
+    <section class="panel left">
+      <div class="controls">
+        <button id="btn-back" class="secondary" title="Step back">◀ Back</button>
+        <button id="btn-next" title="Run the next step">Next ▶</button>
+        <button id="btn-play" class="secondary" title="Run all steps">▶ Play All</button>
+        <button id="btn-reset" class="secondary" title="Reset the demo">↻ Reset</button>
+      </div>
+
+      <div class="rule-card">
+        <p><strong>Goal.</strong> Build a binary decision tree that splits the feature space to make class labels as pure as possible. We choose the split with the lowest <em>weighted Gini impurity</em>.</p>
+        <p class="formula"><strong>Gini impurity</strong> for a node with class proportions <code>p₁…pₖ</code>:
+          <br/><code>Gini = 1 − Σ pᵢ²</code></p>
+        <p class="formula"><strong>Split score</strong> for a candidate threshold T on feature <code>f</code>:
+          <br/><code>Score = (nL/n)·Gini(L) + (nR/n)·Gini(R)</code>, where L: <code>f ≤ T</code>, R: <code>f &gt; T</code>.</p>
+      </div>
+
+      <div class="kpi-row">
+        <div class="kpi"><div>Current step</div><b id="kpi-step">1 / 8</b></div>
+        <div class="kpi"><div>Best split</div><b id="kpi-best">—</b></div>
+      </div>
+
+      <div class="step-list" id="steps"></div>
+
+      <div class="calc" id="calc"></div>
+
+      <div class="footer-note">Tip: use <kbd>Space</kbd> for Next, <kbd>←</kbd>/<kbd>→</kbd> to navigate, <kbd>R</kbd> to reset.</div>
+    </section>
+
+    <section class="panel viz">
+      <div class="viz-head">
+        <div class="pill">Dataset: 2 numeric features (<code>f1</code>, <code>f2</code>), 2 classes</div>
+        <div class="pill">Try splits on <code>f1</code> (vertical) and <code>f2</code> (horizontal)</div>
+      </div>
+      <div class="viz-grid">
+        <div class="box">
+          <svg id="plot" viewBox="0 0 700 520" preserveAspectRatio="xMidYMid meet" aria-label="2D scatter plot with animated split lines">
+            <defs>
+              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+                <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                <feMerge>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+            </defs>
+            <!-- Axes background grid -->
+            <g id="grid"></g>
+            <!-- Data points -->
+            <g id="points"></g>
+            <!-- Split lines -->
+            <g id="splits">
+              <line id="vline" x1="-10" y1="0" x2="-10" y2="520" stroke="var(--accent)" stroke-width="2" opacity="0" filter="url(#glow)"/>
+              <line id="hline" x1="0" y1="-10" x2="700" y2="-10" stroke="var(--accent-2)" stroke-width="2" opacity="0" filter="url(#glow)"/>
+            </g>
+            <!-- Node boxes overlay (to show left/right groups) -->
+            <g id="groups"></g>
+          </svg>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+  // ================================
+  // Data & helpers
+  // ================================
+  const data = [
+    { id: 1,  f1: 1.0, f2: 1.0, y: 0 },
+    { id: 2,  f1: 1.2, f2: 0.8, y: 0 },
+    { id: 3,  f1: 1.4, f2: 1.1, y: 0 },
+    { id: 4,  f1: 3.0, f2: 3.1, y: 1 },
+    { id: 5,  f1: 3.2, f2: 2.9, y: 1 },
+    { id: 6,  f1: 2.8, f2: 3.0, y: 1 },
+    { id: 7,  f1: 2.0, f2: 1.5, y: 0 },
+    { id: 8,  f1: 2.2, f2: 1.7, y: 0 },
+    { id: 9,  f1: 2.5, f2: 2.2, y: 1 },
+    { id: 10, f1: 1.8, f2: 1.3, y: 0 },
+  ];
+
+  // Scale helpers to map feature values to svg coordinates
+  const f1Min = Math.min(...data.map(d => d.f1));
+  const f1Max = Math.max(...data.map(d => d.f1));
+  const f2Min = Math.min(...data.map(d => d.f2));
+  const f2Max = Math.max(...data.map(d => d.f2));
+
+  const PLOT_W = 700, PLOT_H = 520, PAD = 30;
+  const scaleX = v => PAD + (v - f1Min) / (f1Max - f1Min) * (PLOT_W - 2*PAD);
+  const scaleY = v => PLOT_H - PAD - (v - f2Min) / (f2Max - f2Min) * (PLOT_H - 2*PAD);
+
+  const grid = document.getElementById('grid');
+  const pointsG = document.getElementById('points');
+  const groupsG = document.getElementById('groups');
+  const vline = document.getElementById('vline');
+  const hline = document.getElementById('hline');
+  const calc = document.getElementById('calc');
+  const giniRootEl = document.getElementById('gini-root');
+  const kpiStepEl = document.getElementById('kpi-step');
+  const kpiBestEl = document.getElementById('kpi-best');
+
+  // Draw grid
+  for (let i = 0; i < 8; i++) {
+    const x = PAD + i * ((PLOT_W - 2*PAD)/7);
+    const y = PAD + i * ((PLOT_H - 2*PAD)/7);
+    const v1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    v1.setAttribute('x1', x); v1.setAttribute('x2', x); v1.setAttribute('y1', PAD); v1.setAttribute('y2', PLOT_H-PAD);
+    v1.setAttribute('stroke', 'rgba(255,255,255,.07)'); v1.setAttribute('stroke-width', '1');
+    const h1 = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    h1.setAttribute('x1', PAD); h1.setAttribute('x2', PLOT_W-PAD); h1.setAttribute('y1', y); h1.setAttribute('y2', y);
+    h1.setAttribute('stroke', 'rgba(255,255,255,.07)'); h1.setAttribute('stroke-width', '1');
+    grid.appendChild(v1); grid.appendChild(h1);
+  }
+
+  // Draw points
+  const pointNodes = [];
+  data.forEach(d => {
+    const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+    g.setAttribute('data-id', d.id);
+    const c = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    c.setAttribute('cx', scaleX(d.f1));
+    c.setAttribute('cy', scaleY(d.f2));
+    c.setAttribute('r', 6.5);
+    c.setAttribute('fill', d.y === 0 ? '#7aa2ff' : '#ff7aa2');
+    c.setAttribute('opacity', 0);
+    c.setAttribute('stroke', 'white');
+    c.setAttribute('stroke-opacity', .6);
+    c.setAttribute('stroke-width', 0.8);
+
+    const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+    label.setAttribute('x', scaleX(d.f1) + 9);
+    label.setAttribute('y', scaleY(d.f2) + 4);
+    label.setAttribute('font-size', '10');
+    label.setAttribute('fill', 'rgba(255,255,255,.75)');
+    label.textContent = `${d.id}`;
+    label.setAttribute('opacity', 0);
+
+    g.appendChild(c); g.appendChild(label); pointsG.appendChild(g);
+    pointNodes.push({ g, c, label, d });
+  });
+
+  // Gini helpers
+  function giniFromCounts(counts) {
+    const n = counts.reduce((a,b)=>a+b, 0);
+    if (n === 0) return 0;
+    return 1 - counts.reduce((s, v) => s + Math.pow(v / n, 2), 0);
+  }
+  function classCounts(rows) {
+    const c0 = rows.filter(r=>r.y===0).length;
+    const c1 = rows.filter(r=>r.y===1).length;
+    return [c0, c1];
+  }
+  function weightedGini(leftRows, rightRows) {
+    const n = leftRows.length + rightRows.length;
+    const gL = giniFromCounts(classCounts(leftRows));
+    const gR = giniFromCounts(classCounts(rightRows));
+    return (leftRows.length/n)*gL + (rightRows.length/n)*gR;
+  }
+
+  // Enumerate candidate thresholds: midpoints between sorted unique values
+  function thresholdsFor(feature, rows) {
+    const uniq = Array.from(new Set(rows.map(r=>r[feature]).sort((a,b)=>a-b)));
+    const th = [];
+    for (let i=0; i<uniq.length-1; i++) {
+      th.push((uniq[i]+uniq[i+1])/2);
+    }
+    return th;
+  }
+
+  function bestSplit(rows, features=['f1','f2']) {
+    let best = { feature: null, threshold: null, score: Infinity, left: [], right: [] };
+    for (const f of features) {
+      for (const t of thresholdsFor(f, rows)) {
+        const left = rows.filter(r=>r[f] <= t);
+        const right = rows.filter(r=>r[f] > t);
+        const score = weightedGini(left, right);
+        if (score < best.score) best = { feature: f, threshold: t, score, left, right };
+      }
+    }
+    return best;
+  }
+
+  // UI helpers
+  function fmt(v) { return (Math.round(v*1000)/1000).toFixed(3); }
+  function setCalc(html) { calc.innerHTML = html; }
+  function flashKPI(el) { anime({ targets: el, scale: [1,1.06,1], duration: 550, easing: 'easeOutQuad' }); }
+
+  // Animate intro: points fade in
+  async function animIntro() {
+    anime.set([vline, hline], { opacity: 0 });
+    await anime({ targets: pointNodes.map(p=>p.c), opacity: [0,1], delay: anime.stagger(50), duration: 550, easing: 'easeOutQuad' }).finished;
+    await anime({ targets: pointNodes.map(p=>p.label), opacity: [0,1], delay: anime.stagger(40), duration: 400, easing: 'easeOutQuad' }).finished;
+  }
+
+  // Animate sweeping a vertical line across candidate thresholds of f1
+  async function sweepVertical(thresholds, rows, color='var(--accent)') {
+    anime.set(vline, { opacity: 1, stroke: color });
+    for (const t of thresholds) {
+      const x = scaleX(t);
+      await anime({ targets: vline, x1: x, x2: x, duration: 600, easing: 'easeInOutCubic' }).finished;
+      // Highlight left/right groups
+      await highlightGroups(rows.filter(r=>r.f1<=t), rows.filter(r=>r.f1>t), 'vertical');
+    }
+  }
+
+  // Animate sweeping a horizontal line across candidate thresholds of f2
+  async function sweepHorizontal(thresholds, rows, color='var(--accent-2)') {
+    anime.set(hline, { opacity: 1, stroke: color });
+    for (const t of thresholds) {
+      const y = scaleY(t);
+      await anime({ targets: hline, y1: y, y2: y, duration: 600, easing: 'easeInOutCubic' }).finished;
+      await highlightGroups(rows.filter(r=>r.f2<=t), rows.filter(r=>r.f2>t), 'horizontal');
+    }
+  }
+
+  // Draw translucent group rectangles & pulse points by group
+  async function highlightGroups(leftRows, rightRows, orientation) {
+    groupsG.innerHTML = '';
+    const leftRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    const rightRect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+
+    if (orientation === 'vertical') {
+      // compute current x of vline
+      const x = parseFloat(vline.getAttribute('x1')) || -10;
+      leftRect.setAttribute('x', 0);
+      leftRect.setAttribute('y', 0);
+      leftRect.setAttribute('width', Math.max(0, x));
+      leftRect.setAttribute('height', PLOT_H);
+      rightRect.setAttribute('x', Math.max(0, x));
+      rightRect.setAttribute('y', 0);
+      rightRect.setAttribute('width', PLOT_W - Math.max(0, x));
+      rightRect.setAttribute('height', PLOT_H);
+    } else {
+      const y = parseFloat(hline.getAttribute('y1')) || -10;
+      leftRect.setAttribute('x', 0);
+      leftRect.setAttribute('y', Math.max(0, y));
+      leftRect.setAttribute('width', PLOT_W);
+      leftRect.setAttribute('height', PLOT_H - Math.max(0, y));
+      rightRect.setAttribute('x', 0);
+      rightRect.setAttribute('y', 0);
+      rightRect.setAttribute('width', PLOT_W);
+      rightRect.setAttribute('height', Math.max(0, y));
+    }
+
+    leftRect.setAttribute('fill', 'rgba(124,156,255,.08)');
+    rightRect.setAttribute('fill', 'rgba(131,255,216,.08)');
+    leftRect.setAttribute('opacity', 0);
+    rightRect.setAttribute('opacity', 0);
+
+    groupsG.appendChild(leftRect); groupsG.appendChild(rightRect);
+    await anime({ targets: [leftRect, rightRect], opacity: [0,1], duration: 200, easing: 'easeOutQuad' }).finished;
+
+    const blink = (rows) => anime({ targets: rows.map(r=> pointsG.querySelector(`g[data-id="${r.id}"] circle`)), r: [6.5, 9, 6.5], duration: 350, easing: 'easeOutCubic' }).finished;
+    await blink(leftRows); await blink(rightRows);
+  }
+
+  // ================================
+  // Steps (scripted walkthrough)
+  // ================================
+  const stepDescriptions = [
+    '1) Introduce the data & axes. Each dot is a sample with features (f1, f2) and a binary class.',
+    '2) Compute the root node\'s Gini impurity using class proportions.',
+    '3) Try every possible split on feature f1 (vertical line). Compute weighted Gini for each threshold.',
+    '4) Try every possible split on feature f2 (horizontal line). Compute weighted Gini for each threshold.',
+    '5) Choose the best split (lowest weighted Gini) across both features.',
+    '6) Recurse on the left child: try new splits within that subset; stop if pure or too small.',
+    '7) (Optional) Recurse on the right child similarly.',
+    '8) Summarize the final tree and the learned decision rules.'
+  ];
+
+  const stepsUL = document.getElementById('steps');
+  stepDescriptions.forEach((t,i)=>{
+    const div = document.createElement('div'); div.className = 'step'; div.id = `step-${i}`; div.textContent = t; stepsUL.appendChild(div);
+  });
+
+  function setActiveStep(i) {
+    for (let k=0;k<stepDescriptions.length;k++) {
+      const el = document.getElementById(`step-${k}`);
+      el.classList.toggle('active', k === i);
+    }
+    kpiStepEl.textContent = `${i+1} / ${stepDescriptions.length}`;
+  }
+
+  // Holds the scripted async functions for each step
+  const stepFns = [];
+
+  // Step 1 — Intro & show points
+  stepFns[0] = async () => {
+    setCalc(`<b>Step 1 — Meet the data</b><br/>We have ${data.length} samples and two numeric features. Dots are labeled \n<code>class = 0</code> (blue) or <code>class = 1</code> (pink).`);
+    await animIntro();
+  };
+
+  // Step 2 — Root Gini
+  stepFns[1] = async () => {
+    const counts = classCounts(data);
+    const g = giniFromCounts(counts);
+    giniRootEl.textContent = fmt(g);
+    flashKPI(giniRootEl);
+    setCalc(`<b>Step 2 — Root Gini</b><br/>Counts: class0 = <code>${counts[0]}</code>, class1 = <code>${counts[1]}</code><br/>Proportions: p0 = ${(counts[0]/data.length).toFixed(2)}, p1 = ${(counts[1]/data.length).toFixed(2)}<br/><code>Gini(root) = 1 − (p0² + p1²) = ${fmt(g)}</code>`);
+    await anime({ targets: pointsG, duration: 500, opacity: [1,1] }).finished;
+  };
+
+  // Step 3 — Try f1 thresholds
+  stepFns[2] = async () => {
+    const th = thresholdsFor('f1', data);
+    setCalc(`<b>Step 3 — Try splits on f1</b><br/>Candidate thresholds (midpoints): <code>${th.map(v=>fmt(v)).join(', ')}</code><br/>For each T: split into L: f1 ≤ T and R: f1 > T, compute weighted Gini.`);
+
+    let best = { score: Infinity, threshold: null };
+    anime.set(vline, { opacity: 1 });
+    for (const t of th) {
+      const left = data.filter(r=>r.f1<=t), right = data.filter(r=>r.f1>t);
+      const score = weightedGini(left, right);
+      const x = scaleX(t);
+      await anime({ targets: vline, x1: x, x2: x, duration: 600, easing: 'easeInOutCubic' }).finished;
+      await highlightGroups(left, right, 'vertical');
+      setCalc(`<b>f1 @ T=${fmt(t)}</b><br/>L: n=${left.length}, counts=${classCounts(left)}; Gini(L)=${fmt(giniFromCounts(classCounts(left)))}<br/>R: n=${right.length}, counts=${classCounts(right)}; Gini(R)=${fmt(giniFromCounts(classCounts(right)))}<br/><code>Weighted = ${(left.length/data.length).toFixed(2)}·${fmt(giniFromCounts(classCounts(left)))} + ${(right.length/data.length).toFixed(2)}·${fmt(giniFromCounts(classCounts(right)))} = <b>${fmt(score)}</b></code>`);
+      if (score < best.score) { best = { score, threshold: t }; flashKPI(kpiBestEl); kpiBestEl.textContent = `f1 ≤ ${fmt(t)} (score ${fmt(score)})`; }
+      await anime({ targets: kpiBestEl, duration: 250 }).finished;
+    }
+  };
+
+  // Step 4 — Try f2 thresholds
+  stepFns[3] = async () => {
+    const th = thresholdsFor('f2', data);
+    setCalc(`<b>Step 4 — Try splits on f2</b><br/>Candidate thresholds (midpoints): <code>${th.map(v=>fmt(v)).join(', ')}</code>.`);
+
+    let bestLocal = { score: Infinity, threshold: null };
+    anime.set(hline, { opacity: 1 });
+    for (const t of th) {
+      const left = data.filter(r=>r.f2<=t), right = data.filter(r=>r.f2>t);
+      const score = weightedGini(left, right);
+      const y = scaleY(t);
+      await anime({ targets: hline, y1: y, y2: y, duration: 600, easing: 'easeInOutCubic' }).finished;
+      await highlightGroups(left, right, 'horizontal');
+      setCalc(`<b>f2 @ T=${fmt(t)}</b><br/>L: n=${left.length}, counts=${classCounts(left)}; Gini(L)=${fmt(giniFromCounts(classCounts(left)))}<br/>R: n=${right.length}, counts=${classCounts(right)}; Gini(R)=${fmt(giniFromCounts(classCounts(right)))}<br/><code>Weighted = ${(left.length/data.length).toFixed(2)}·${fmt(giniFromCounts(classCounts(left)))} + ${(right.length/data.length).toFixed(2)}·${fmt(giniFromCounts(classCounts(right)))} = <b>${fmt(score)}</b></code>`);
+      if (score < bestLocal.score) { bestLocal = { score, threshold: t }; }
+    }
+
+    // Decide global best across f1 and f2 by recomputing best across both features
+    const best = bestSplit(data);
+    kpiBestEl.textContent = `${best.feature} ≤ ${fmt(best.threshold)} (score ${fmt(best.score)})`;
+    flashKPI(kpiBestEl);
+  };
+
+  // Step 5 — Lock the best split & show the two child nodes
+  stepFns[4] = async () => {
+    const best = bestSplit(data);
+    const isVert = best.feature === 'f1';
+    const line = isVert ? vline : hline;
+    anime.set(vline, { opacity: isVert ? 1 : .2 });
+    anime.set(hline, { opacity: !isVert ? 1 : .2 });
+
+    // Move the chosen line to its exact threshold and pulse
+    const coord = isVert ? scaleX(best.threshold) : scaleY(best.threshold);
+    await anime({ targets: line, [isVert?'x1':'y1']: coord, [isVert?'x2':'y2']: coord, duration: 700, easing: 'easeInOutCubic' }).finished;
+    await anime({ targets: line, strokeWidth: [2, 5, 2], duration: 500, easing: 'easeOutQuad' }).finished;
+
+    const left = data.filter(r=>r[best.feature] <= best.threshold);
+    const right = data.filter(r=>r[best.feature] > best.threshold);
+    const gL = giniFromCounts(classCounts(left));
+    const gR = giniFromCounts(classCounts(right));
+
+    setCalc(`<b>Step 5 — Best split chosen</b><br/><code>${best.feature} ≤ ${fmt(best.threshold)}</code><br/>Left node: n=${left.length}, counts=${classCounts(left)}, Gini=${fmt(gL)}<br/>Right node: n=${right.length}, counts=${classCounts(right)}, Gini=${fmt(gR)}`);
+
+    await highlightGroups(left, right, isVert? 'vertical':'horizontal');
+  };
+
+  // Step 6 — Recurse on LEFT child
+  stepFns[5] = async () => {
+    const b = bestSplit(data);
+    const left = data.filter(r=>r[b.feature] <= b.threshold);
+
+    const childBest = bestSplit(left);
+    const isVert = childBest.feature === 'f1';
+
+    // Dim global lines, show a local line with different color by drawing a temporary line
+    const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    if (isVert) {
+      const x = scaleX(childBest.threshold);
+      tmp.setAttribute('x1', x); tmp.setAttribute('x2', x); tmp.setAttribute('y1', 0); tmp.setAttribute('y2', PLOT_H);
+    } else {
+      const y = scaleY(childBest.threshold);
+      tmp.setAttribute('x1', 0); tmp.setAttribute('x2', PLOT_W); tmp.setAttribute('y1', y); tmp.setAttribute('y2', y);
+    }
+    tmp.setAttribute('stroke', '#ffd166'); tmp.setAttribute('stroke-width', '2'); tmp.setAttribute('opacity', '0'); tmp.setAttribute('filter', 'url(#glow)');
+    document.getElementById('splits').appendChild(tmp);
+
+    await anime({ targets: tmp, opacity: [0,1], duration: 450, easing: 'easeOutQuad' }).finished;
+
+    const leftL = left.filter(r=> r[childBest.feature] <= childBest.threshold);
+    const leftR = left.filter(r=> r[childBest.feature] > childBest.threshold);
+    const gL = giniFromCounts(classCounts(leftL));
+    const gR = giniFromCounts(classCounts(leftR));
+
+    setCalc(`<b>Step 6 — Recurse on left child</b><br/>On the subset that satisfied <code>${b.feature} ≤ ${fmt(b.threshold)}</code>, try splits again.<br/><code>${childBest.feature} ≤ ${fmt(childBest.threshold)}</code> yields left: n=${leftL.length}, Gini=${fmt(gL)}; right: n=${leftR.length}, Gini=${fmt(gR)}.`);
+
+    await highlightGroups(leftL, leftR, isVert? 'vertical':'horizontal');
+    await anime({ targets: tmp, strokeWidth: [2, 5, 2], duration: 450, easing: 'easeOutQuad' }).finished;
+  };
+
+  // Step 7 — Recurse on RIGHT child (briefly)
+  stepFns[6] = async () => {
+    const b = bestSplit(data);
+    const right = data.filter(r=>r[b.feature] > b.threshold);
+    const childBest = bestSplit(right);
+    const isVert = childBest.feature === 'f1';
+
+    const tmp = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+    if (isVert) {
+      const x = scaleX(childBest.threshold);
+      tmp.setAttribute('x1', x); tmp.setAttribute('x2', x); tmp.setAttribute('y1', 0); tmp.setAttribute('y2', PLOT_H);
+    } else {
+      const y = scaleY(childBest.threshold);
+      tmp.setAttribute('x1', 0); tmp.setAttribute('x2', PLOT_W); tmp.setAttribute('y1', y); tmp.setAttribute('y2', y);
+    }
+    tmp.setAttribute('stroke', '#ffd166'); tmp.setAttribute('stroke-width', '2'); tmp.setAttribute('opacity', '0'); tmp.setAttribute('filter', 'url(#glow)');
+    document.getElementById('splits').appendChild(tmp);
+    await anime({ targets: tmp, opacity: [0,1], duration: 450, easing: 'easeOutQuad' }).finished;
+
+    const rightL = right.filter(r=> r[childBest.feature] <= childBest.threshold);
+    const rightR = right.filter(r=> r[childBest.feature] > childBest.threshold);
+
+    setCalc(`<b>Step 7 — Recurse on right child</b><br/>Within <code>${b.feature} &gt; ${fmt(b.threshold)}</code>, the best next split is <code>${childBest.feature} ≤ ${fmt(childBest.threshold)}</code>. If a node becomes pure (Gini = 0) or has too few samples, it becomes a leaf.`);
+    await highlightGroups(rightL, rightR, isVert? 'vertical':'horizontal');
+  };
+
+  // Step 8 — Summarize rules
+  stepFns[7] = async () => {
+    const root = bestSplit(data);
+    const left = data.filter(r=>r[root.feature] <= root.threshold);
+    const right = data.filter(r=>r[root.feature] > root.threshold);
+
+    // Majority classes
+    const maj = rows => classCounts(rows)[0] >= classCounts(rows)[1] ? 0 : 1;
+    const leftBest = bestSplit(left);
+    const rightBest = bestSplit(right);
+
+    const leftL = left.filter(r=> r[leftBest.feature] <= leftBest.threshold);
+    const leftR = left.filter(r=> r[leftBest.feature] > leftBest.threshold);
+    const rightL = right.filter(r=> r[rightBest.feature] <= rightBest.threshold);
+    const rightR = right.filter(r=> r[rightBest.feature] > rightBest.threshold);
+
+    const html = `
+      <b>Step 8 — Final tree (depth ≤ 2) and rules</b><br/>
+      <ul>
+        <li>Root: if <code>${root.feature} ≤ ${fmt(root.threshold)}</code> go Left; else Right.</li>
+        <li>Left child: if <code>${leftBest.feature} ≤ ${fmt(leftBest.threshold)}</code> → predict <b>class ${maj(leftL)}</b>; else → predict <b>class ${maj(leftR)}</b>.</li>
+        <li>Right child: if <code>${rightBest.feature} ≤ ${fmt(rightBest.threshold)}</code> → predict <b>class ${maj(rightL)}</b>; else → predict <b>class ${maj(rightR)}</b>.</li>
+      </ul>
+      <div style="margin-top:8px">This mirrors how classic CART builds trees: at each node it greedily picks the split with the smallest weighted Gini.</div>
+    `;
+
+    setCalc(html);
+
+    // Fun confetti pulse on the best lines
+    await anime({ targets: [vline, hline], strokeDasharray: ['0 0', '8 6'], duration: 600, easing: 'easeInOutCubic' }).finished;
+  };
+
+  // Controller
+  let idx = 0, playing = false;
+
+  function resetAll() {
+    idx = 0; playing = false; setActiveStep(idx); kpiBestEl.textContent = '—'; giniRootEl.textContent = '—';
+    setCalc('');
+    groupsG.innerHTML = '';
+    anime.set([vline, hline], { opacity: 0, strokeDasharray: '0 0', strokeWidth: 2 });
+    anime.set(pointNodes.map(p=>p.c), { opacity: 0, r: 6.5 });
+    anime.set(pointNodes.map(p=>p.label), { opacity: 0 });
+  }
+
+  async function runStep(i) {
+    setActiveStep(i);
+    try { await stepFns[i](); } catch (e) { console.error(e); }
+  }
+
+  async function next() {
+    if (idx >= stepFns.length) return;
+    await runStep(idx);
+    idx++;
+    if (idx < stepFns.length) setActiveStep(idx);
+  }
+
+  async function back() {
+    // simple reset and fast-forward to previous step
+    const target = Math.max(0, idx - 1);
+    resetAll();
+    for (let i = 0; i < target; i++) { // fast-forward silently
+      // Run each step but skip long animations to keep it quick
+      await stepFns[i]();
+    }
+    idx = target; setActiveStep(idx);
+  }
+
+  async function playAll() {
+    if (playing) return; playing = true;
+    while (idx < stepFns.length) { await next(); }
+    playing = false;
+  }
+
+  // Buttons
+  document.getElementById('btn-next').addEventListener('click', next);
+  document.getElementById('btn-back').addEventListener('click', back);
+  document.getElementById('btn-play').addEventListener('click', playAll);
+  document.getElementById('btn-reset').addEventListener('click', resetAll);
+
+  // Keyboard shortcuts
+  window.addEventListener('keydown', (e)=>{
+    if (e.code === 'Space') { e.preventDefault(); next(); }
+    if (e.code === 'ArrowRight') { next(); }
+    if (e.code === 'ArrowLeft') { back(); }
+    if (e.key.toLowerCase() === 'r') { resetAll(); }
+  });
+
+  // Boot
+  resetAll();
+  setActiveStep(0);
+  setCalc('<b>Press “Next”</b> to start the guided animation.');
+  </script>
+</body>
+</html>
