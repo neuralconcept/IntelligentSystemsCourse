@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Artificial Neural Networks - USJ</title>
+    <title>Artificial Neural Networks - USJ (Reveal.js)</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,7 +51,7 @@
             --usj-med-gray: #6B6B6B;
             --usj-soft-black: #222222;
             --usj-white: #FFFFFF;
-            --usj-blue: #0055A4; /* For forward pass context */
+            --usj-blue: #0055A4; 
         }
 
         /* Global Background SVG */
@@ -71,31 +71,45 @@
             font-family: 'Montserrat', sans-serif;
             color: var(--usj-red);
             text-transform: none;
+            margin: 0 0 20px 0; /* Clean margins */
         }
 
         .reveal h1 { font-weight: 800; font-size: 2.5em; }
-        .reveal h2 { font-weight: 700; }
-        .reveal p { font-size: 0.8em; line-height: 1.6; }
+        .reveal h2 { font-weight: 700; font-size: 2em; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .reveal p { font-size: 0.9em; line-height: 1.5; margin-bottom: 15px; }
         
-        /* Slide Layouts */
+        /* --- AUTO-ADJUST LAYOUTS (Flexbox) --- */
         .slide-content {
             background: rgba(255, 255, 255, 0.98);
             border-radius: 15px;
-            padding: 40px;
+            padding: 3vh 3vw; /* Responsive padding */
             border: 1px solid #e2e8f0;
             box-shadow: 0 10px 30px rgba(0,0,0,0.05);
             text-align: left;
-            height: 100%;
+            
+            /* Flex magic for auto-fit */
+            height: 95vh; /* Fill almost full height */
+            width: 95vw;  /* Fill almost full width */
+            box-sizing: border-box;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start; /* Start from top */
         }
         
         .two-column {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            display: flex;
+            flex-direction: row;
             gap: 40px;
             align-items: center;
+            flex: 1; /* Take remaining space */
+            min-height: 0; /* Allow shrinking */
+        }
+
+        .two-column > div {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
             height: 100%;
         }
 
@@ -107,30 +121,34 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 350px;
             overflow: hidden;
             position: relative;
             border: 1px solid #eee;
+            
+            /* Responsive Image Container */
+            width: 100%;
+            height: 100%; 
+            max-height: 60vh; /* Limit height */
+            min-height: 300px;
         }
 
-        .image-wrapper img {
-            max-height: 100%;
-            max-width: 100%;
+        .image-wrapper img, .image-wrapper svg {
+            width: 100%;
+            height: 100%;
             object-fit: contain;
         }
         
         /* Simulation Containers */
-        #layered-sim-container, #training-sim-container {
+        #layered-sim-container, #training-sim-container, #equation-sim-container {
             width: 100%;
             height: 100%;
-            min-height: 350px;
         }
 
         ul { margin-left: 0; padding-left: 1em; }
-        li { margin-bottom: 15px; }
+        li { margin-bottom: 10px; }
         li::marker { color: var(--usj-red); }
 
-        /* --- INTERACTIVE NEURON STYLES (Slide 3) --- */
+        /* --- INTERACTIVE NEURON STYLES --- */
         .neuron-simulation-container {
             display: grid;
             grid-template-columns: 250px 1fr 250px;
@@ -139,7 +157,9 @@
             border-radius: 12px;
             padding: 15px;
             box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-            font-size: 0.6em; 
+            font-size: 0.7em; 
+            height: 100%;
+            align-content: center;
         }
 
         .controls-panel, .graph-panel {
@@ -153,9 +173,9 @@
         }
 
         .control-group {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             border-bottom: 1px solid #e2e8f0;
-            padding-bottom: 5px;
+            padding-bottom: 4px;
         }
 
         .control-group label {
@@ -180,33 +200,25 @@
 
         .reveal input[type=range] { pointer-events: auto; }
         
-        /* Graph Styles */
-        #graphSvg {
-            overflow: visible;
+        /* Highlighted Curve Style */
+        #sigmoid-curve {
+            stroke: var(--usj-bright-red); 
+            stroke-width: 5px; 
+            stroke-linecap: round;
+            filter: drop-shadow(0px 3px 5px rgba(0,0,0, 0.2));
         }
         
         #graph-dot {
             fill: var(--usj-soft-black);
             stroke: white;
             stroke-width: 3px;
-            filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.3));
+            r: 7px; 
+            box-shadow: 0 0 10px rgba(0,0,0,0.5);
         }
 
-        /* Simulation Text Styles */
-        .sim-text-overlay {
-            font-family: 'Montserrat', sans-serif;
-            font-weight: 700;
-            font-size: 18px;
-            fill: var(--usj-red);
-            text-anchor: middle;
-        }
-        
-        .sim-subtext {
-            font-family: 'Lato', sans-serif;
-            font-size: 14px;
-            fill: var(--usj-med-gray);
-            text-anchor: middle;
-        }
+        /* Equation Text Styles */
+        .math-symbol { font-family: 'Times New Roman', serif; font-style: italic; font-weight: bold; }
+        .math-text { font-family: 'Montserrat', sans-serif; font-weight: 600; font-size: 14px; fill: #888; }
 
         /* --- FULLSCREEN PLUGIN STYLES --- */
         .usj-fs-btn {
@@ -246,9 +258,9 @@
 
                 <!-- Slide 1: Title -->
                 <section>
-                    <div class="slide-content" style="text-align: center; border-top: 5px solid var(--usj-red);">
+                    <div class="slide-content" style="justify-content: center; text-align: center; border-top: 10px solid var(--usj-red);">
                         <h1>Artificial Neural<br>Networks</h1>
-                        <p style="font-size: 1.2em; color: var(--usj-med-gray);">A Conceptual and Practical Introduction</p>
+                        <p style="font-size: 1.5em; color: var(--usj-med-gray);">A Conceptual and Practical Introduction</p>
                         <div style="margin-top: 50px; font-weight: 700; color: var(--usj-red); letter-spacing: 2px;">SAN JORGE UNIVERSITY</div>
                     </div>
                 </section>
@@ -276,7 +288,7 @@
                 <!-- Slide 3: Interactive Artificial Neuron -->
                 <section data-prevent-swipe>
                     <div class="slide-content">
-                        <h3 style="margin-bottom: 20px;">The Artificial Neuron Model</h3>
+                        <h3 style="margin-bottom: 10px;">The Artificial Neuron Model</h3>
                         <div class="neuron-simulation-container">
                             <!-- Left: Controls -->
                             <div class="controls-panel">
@@ -291,7 +303,7 @@
                             </div>
 
                             <!-- Center: Visualizer SVG -->
-                            <div style="display: flex; align-items: center; justify-content: center;">
+                            <div style="display: flex; align-items: center; justify-content: center; height:100%;">
                                 <svg id="neuronSvg" viewBox="0 0 300 200" style="width: 100%; height: 100%;">
                                     <line id="line-1" x1="50" y1="50" x2="150" y2="100" stroke="#6B6B6B" stroke-width="2" />
                                     <line id="line-2" x1="50" y1="150" x2="150" y2="100" stroke="#6B6B6B" stroke-width="2" />
@@ -306,24 +318,9 @@
                             <div class="graph-panel">
                                 <h4>Activation (Sigmoid)</h4>
                                 <svg id="graphSvg" viewBox="0 0 150 80" style="width:100%; height:80px; background: white; border:1px solid #ccc;">
-                                    <!-- Improved Grid -->
-                                    <defs>
-                                        <pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse">
-                                            <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#eee" stroke-width="0.5"/>
-                                        </pattern>
-                                    </defs>
-                                    <rect width="100%" height="100%" fill="url(#smallGrid)" />
-                                    
-                                    <!-- Axes -->
-                                    <line x1="75" y1="0" x2="75" y2="80" stroke="#bbb" stroke-width="1" /> <!-- Y Axis -->
-                                    <line x1="0" y1="40" x2="150" y2="40" stroke="#bbb" stroke-width="1" /> <!-- X Axis -->
-                                    
-                                    <!-- Limits -->
-                                    <text x="5" y="10" font-size="8" fill="#999">1</text>
-                                    <text x="5" y="75" font-size="8" fill="#999">0</text>
-                                    
-                                    <!-- Path constructed in JS, but strictly styled inline here for visibility -->
-                                    <path id="sigmoid-curve" fill="none" stroke="#D6001C" stroke-width="4" stroke-linecap="round" />
+                                    <line x1="75" y1="0" x2="75" y2="80" stroke="#ddd" stroke-width="2" />
+                                    <line x1="0" y1="40" x2="150" y2="40" stroke="#ddd" stroke-width="2" />
+                                    <path id="sigmoid-curve" fill="none" />
                                     <circle id="graph-dot" cx="75" cy="40" r="6" />
                                 </svg>
                                 <div style="text-align:center; margin-top:10px;">
@@ -335,7 +332,28 @@
                     </div>
                 </section>
 
-                <!-- Slide 4: Layered Architecture -->
+                <!-- Slide 4 (NEW): The Mathematical Core -->
+                <section>
+                    <div class="slide-content">
+                        <h2>The Mathematical Core</h2>
+                        <div class="two-column">
+                            <div>
+                                <h3>Formula Composition</h3>
+                                <p>The output of a single perceptron is calculated in steps:</p>
+                                <ol>
+                                    <li id="eq-step-1" style="opacity:0.3"><strong>Weighted Sum:</strong> Inputs are multiplied by weights.</li>
+                                    <li id="eq-step-2" style="opacity:0.3"><strong>Bias:</strong> A threshold value is added.</li>
+                                    <li id="eq-step-3" style="opacity:0.3"><strong>Activation:</strong> Non-linearity is applied.</li>
+                                </ol>
+                            </div>
+                            <div class="image-wrapper" style="padding: 0; background: #fff;">
+                                <div id="equation-sim-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Slide 5: Layered Architecture -->
                 <section>
                     <div class="slide-content">
                         <h2>Layered Architecture</h2>
@@ -345,10 +363,10 @@
                                 <p>A typical neural network is organized into distinct layers:</p>
                                 <ul>
                                     <li><strong>Input Layer:</strong> Receives raw data.</li>
-                                    <li><strong>Hidden Layers:</strong> Perform complex feature extraction.</li>
-                                    <li><strong>Output Layer:</strong> Produces final prediction.</li>
+                                    <li><strong>Hidden Layers:</strong> Feature extraction.</li>
+                                    <li><strong>Output Layer:</strong> Final prediction.</li>
                                 </ul>
-                                <p style="margin-top:20px; color:var(--usj-red); font-weight:bold;">Live Data Flow Simulation &rarr;</p>
+                                <p style="margin-top:20px; color:var(--usj-red); font-weight:bold;">Live Data Flow &rarr;</p>
                             </div>
                             <div class="image-wrapper" style="padding: 0; background: #fcfcfc;">
                                 <div id="layered-sim-container"></div>
@@ -357,14 +375,13 @@
                     </div>
                 </section>
 
-                <!-- Slide 5: Learning Process -->
+                <!-- Slide 6: Learning Process -->
                 <section>
                     <div class="slide-content">
                         <h2>The Learning Process</h2>
                         <div class="two-column">
                             <div>
                                 <h3>Backpropagation</h3>
-                                <p>"Training" is an iterative process of error minimization.</p>
                                 <ol>
                                     <li><strong>Forward Pass:</strong> Make a prediction.</li>
                                     <li><strong>Error Calculation:</strong> Compare with actual value.</li>
@@ -421,11 +438,14 @@
 
         // --- 2. REVEAL.JS INIT ---
         Reveal.initialize({
+            // Auto-fit configuration
             width: 1280,
             height: 720,
-            margin: 0.1,
+            margin: 0.05, // Smaller margin to maximize space
             minScale: 0.2,
             maxScale: 2.0,
+            disableLayout: false, // Allow Reveal to scale content
+            
             controls: true,
             progress: true,
             center: true,
@@ -436,59 +456,35 @@
             plugins: [ UsjFullscreenPlugin ]
         });
 
-        // --- 3. GLOBAL BACKGROUND ---
+        // --- 3. BACKGROUND ---
         (function initBackground() {
             const container = document.getElementById('global-network-bg');
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("width", "100%");
             svg.setAttribute("height", "100%");
             container.appendChild(svg);
-
+            
+            // Simple static nodes
             const config = { layers: [4, 5, 5, 3], nodeColor: '#A50012' };
-            let nodes = [];
             const width = window.innerWidth;
             const height = window.innerHeight;
 
             config.layers.forEach((count, lIdx) => {
-                let layerNodes = [];
                 const x = (width * 0.05) + (width * 0.9) * (lIdx / (config.layers.length - 1));
                 const spacing = height / (count + 1);
                 for(let i=0; i<count; i++) {
-                    const n = { x: x, y: spacing * (i + 1) };
-                    layerNodes.push(n);
                     const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    c.setAttribute("cx", n.x); c.setAttribute("cy", n.y);
+                    c.setAttribute("cx", x); c.setAttribute("cy", spacing * (i + 1));
                     c.setAttribute("r", "3"); c.setAttribute("fill", config.nodeColor);
                     svg.appendChild(c);
                 }
-                nodes.push(layerNodes);
             });
-
-            for(let l=0; l<nodes.length-1; l++) {
-                nodes[l].forEach(src => {
-                    nodes[l+1].forEach(dst => {
-                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                        line.setAttribute("x1", src.x); line.setAttribute("y1", src.y);
-                        line.setAttribute("x2", dst.x); line.setAttribute("y2", dst.y);
-                        line.setAttribute("stroke", "#CCCCCC");
-                        line.setAttribute("stroke-width", "0.5");
-                        svg.appendChild(line);
-                    });
-                });
-            }
         })();
 
-        // --- 4. INTERACTIVE NEURON (FIXED VISIBILITY) ---
+        // --- 4. INTERACTIVE NEURON ---
         (function initInteractive() {
-            const inputs = ['x1', 'x2'].map(id => ({
-                slider: document.getElementById('in-'+id),
-                label: document.getElementById('val-'+id)
-            }));
-            const weights = ['w1', 'w2'].map(id => ({
-                slider: document.getElementById('in-'+id),
-                label: document.getElementById('val-'+id),
-                line: document.getElementById('line-'+id.charAt(1))
-            }));
+            const inputs = ['x1', 'x2'].map(id => ({ slider: document.getElementById('in-'+id), label: document.getElementById('val-'+id) }));
+            const weights = ['w1', 'w2'].map(id => ({ slider: document.getElementById('in-'+id), label: document.getElementById('val-'+id), line: document.getElementById('line-'+id.charAt(1)) }));
             const bias = { slider: document.getElementById('in-b'), label: document.getElementById('val-b') };
             const displaySum = document.getElementById('display-sum');
             const displayOut = document.getElementById('display-output');
@@ -497,20 +493,14 @@
 
             function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
 
-            // Robust Path Generation
             let d = "M 0 ";
-            for(let i=0; i<=150; i+=2) { // Higher resolution
+            for(let i=0; i<=150; i+=2) { 
                 let x = (i - 75) / 10; 
                 let y = sigmoid(x);
-                // SVG coords: height 80. y=0 is top. 
-                // We want y=0 (val) to be bottom (80). y=1 (val) to be top (0).
-                // Actually sigmoid(0)=0.5 should be at 40.
-                let svgY = 80 - (y * 80); // Map 0->80, 1->0
-                if(i===0) d = `M ${i} ${svgY} `;
-                else d += `L ${i} ${svgY} `;
+                let svgY = 80 - (y * 80); 
+                if(i===0) d = `M ${i} ${svgY} `; else d += `L ${i} ${svgY} `;
             }
             curve.setAttribute("d", d);
-            // Explicitly set style again via JS to be safe
             curve.style.stroke = "#D6001C";
             curve.style.strokeWidth = "4px";
 
@@ -543,28 +533,134 @@
             update(); 
         })();
 
-        // --- 5. ADVANCED LAYERED SIMULATION (DATA FLOW) ---
+        // --- 5. NEW: EQUATION ANIMATION (Slide 4) ---
+        (function initEquationSim() {
+            const container = document.getElementById('equation-sim-container');
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            svg.setAttribute("viewBox", "0 0 600 300");
+            container.appendChild(svg);
+
+            // Create Group for centering
+            const g = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            g.setAttribute("transform", "translate(300, 150)"); // Center
+            svg.appendChild(g);
+
+            // Elements Definitions
+            const elements = [
+                { id: 'y', text: 'y', x: -220, size: 40, color: '#222', class: 'math-symbol' },
+                { id: 'eq', text: '=', x: -180, size: 40, color: '#666', class: 'math-symbol' },
+                { id: 'act_open', text: 'σ (', x: -140, size: 40, color: '#0055A4', class: 'math-symbol' }, // Activation
+                { id: 'sum', text: 'Σ', x: -80, size: 50, color: '#D6001C', class: 'math-symbol' }, // Sum
+                { id: 'w', text: 'w', x: -30, size: 40, color: '#D6001C', class: 'math-symbol' },
+                { id: 'dot', text: '·', x: 0, size: 40, color: '#666', class: 'math-symbol' },
+                { id: 'x', text: 'x', x: 20, size: 40, color: '#222', class: 'math-symbol' },
+                { id: 'bias', text: '+ b', x: 70, size: 40, color: '#666', class: 'math-symbol' },
+                { id: 'act_close', text: ')', x: 140, size: 40, color: '#0055A4', class: 'math-symbol' }
+            ];
+
+            // Draw Elements (Hidden initially)
+            const domEls = {};
+            elements.forEach(el => {
+                const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                t.setAttribute("x", el.x);
+                t.setAttribute("y", 15); // Vert center approx
+                t.setAttribute("font-size", el.size);
+                t.setAttribute("fill", el.color);
+                t.setAttribute("text-anchor", "middle");
+                t.setAttribute("font-family", "'Times New Roman', serif");
+                t.setAttribute("font-weight", "bold");
+                t.setAttribute("opacity", "0"); // Start hidden
+                t.setAttribute("transition", "opacity 0.5s, transform 0.5s");
+                t.textContent = el.text;
+                g.appendChild(t);
+                domEls[el.id] = t;
+            });
+
+            // Explanatory Text below
+            const label = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            label.setAttribute("x", 0);
+            label.setAttribute("y", 100);
+            label.setAttribute("text-anchor", "middle");
+            label.setAttribute("font-family", "'Lato', sans-serif");
+            label.setAttribute("font-size", "18");
+            label.setAttribute("fill", "#666");
+            g.appendChild(label);
+
+            // List Items for highlighting
+            const step1 = document.getElementById('eq-step-1');
+            const step2 = document.getElementById('eq-step-2');
+            const step3 = document.getElementById('eq-step-3');
+
+            function setOpacity(el, val) { if(el) el.style.opacity = val; }
+
+            async function playAnimation() {
+                // Reset
+                Object.values(domEls).forEach(e => e.setAttribute("opacity", 0));
+                setOpacity(step1, 0.3); setOpacity(step2, 0.3); setOpacity(step3, 0.3);
+                label.textContent = "";
+
+                await new Promise(r => setTimeout(r, 500));
+
+                // 1. Inputs & Weights
+                setOpacity(step1, 1);
+                label.textContent = "1. Weighted Sum";
+                domEls['w'].setAttribute("opacity", 1);
+                domEls['dot'].setAttribute("opacity", 1);
+                domEls['x'].setAttribute("opacity", 1);
+                await new Promise(r => setTimeout(r, 1000));
+                
+                // 2. Summation
+                domEls['sum'].setAttribute("opacity", 1);
+                await new Promise(r => setTimeout(r, 1000));
+
+                // 3. Bias
+                setOpacity(step2, 1);
+                label.textContent = "2. Add Bias (Threshold)";
+                domEls['bias'].setAttribute("opacity", 1);
+                await new Promise(r => setTimeout(r, 1000));
+
+                // 4. Activation
+                setOpacity(step3, 1);
+                label.textContent = "3. Activation Function (Sigmoid/ReLU)";
+                domEls['act_open'].setAttribute("opacity", 1);
+                domEls['act_close'].setAttribute("opacity", 1);
+                
+                // Scale effect for activation brackets
+                domEls['act_open'].setAttribute("transform", "scale(1.2)");
+                setTimeout(() => domEls['act_open'].setAttribute("transform", "scale(1)"), 200);
+                
+                await new Promise(r => setTimeout(r, 1000));
+
+                // 5. Output
+                label.textContent = "Output y";
+                domEls['y'].setAttribute("opacity", 1);
+                domEls['eq'].setAttribute("opacity", 1);
+
+                setTimeout(playAnimation, 3000);
+            }
+
+            playAnimation();
+        })();
+
+        // --- 6. LAYERED SIMULATION ---
         (function initLayeredSim() {
             const container = document.getElementById('layered-sim-container');
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("width", "100%");
             svg.setAttribute("height", "100%");
+            svg.setAttribute("viewBox", "0 0 500 350");
             container.appendChild(svg);
-            
-            const width = 500; 
-            const height = 350; 
-            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
             
             const layers = [3, 5, 5, 2]; 
             let nodes = [];
-            let lines = [];
             
             layers.forEach((count, lIdx) => {
                 let layerNodes = [];
-                const x = 60 + (lIdx * (width - 120) / (layers.length - 1));
+                const x = 60 + (lIdx * (500 - 120) / (layers.length - 1));
                 const totalH = (count - 1) * 45; 
-                const yStart = (height - totalH) / 2;
-                
+                const yStart = (350 - totalH) / 2;
                 for(let i=0; i<count; i++) {
                     const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
                     const cy = yStart + i*45;
@@ -573,309 +669,139 @@
                     c.setAttribute("fill", "white");
                     c.setAttribute("stroke", "#6B6B6B");
                     c.setAttribute("stroke-width", "2");
-                    c.setAttribute("transition", "all 0.3s");
                     svg.appendChild(c);
                     layerNodes.push({ el: c, x: x, y: cy });
                 }
                 nodes.push(layerNodes);
             });
 
-            for(let l=0; l<nodes.length-1; l++) {
-                let layerLines = [];
-                nodes[l].forEach(src => {
-                    nodes[l+1].forEach(dst => {
-                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                        line.setAttribute("x1", src.x); line.setAttribute("y1", src.y);
-                        line.setAttribute("x2", dst.x); line.setAttribute("y2", dst.y);
-                        const opacity = 0.1 + Math.random() * 0.4;
-                        line.setAttribute("stroke", "#A50012");
-                        line.setAttribute("stroke-width", "1.5");
-                        line.setAttribute("opacity", opacity);
-                        svg.insertBefore(line, svg.firstChild);
-                        layerLines.push(line);
-                    });
-                });
-                lines.push(layerLines);
-            }
-
-            const labels = ["Input", "Hidden 1", "Hidden 2", "Output"];
-            labels.forEach((txt, i) => {
-                const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
-                t.setAttribute("x", 60 + (i * (width - 120) / (layers.length - 1)));
-                t.setAttribute("y", height - 20);
-                t.setAttribute("text-anchor", "middle");
-                t.setAttribute("font-size", "14");
-                t.setAttribute("font-family", "Lato");
-                t.setAttribute("fill", "#6B6B6B");
-                t.textContent = txt;
-                svg.appendChild(t);
-            });
-
             const explText = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            explText.setAttribute("x", width/2);
-            explText.setAttribute("y", 30);
+            explText.setAttribute("x", 250); explText.setAttribute("y", 30);
             explText.setAttribute("class", "sim-text-overlay");
-            explText.textContent = "Initializing...";
             svg.appendChild(explText);
 
-            // Particle Animation Function
+            // Send Particles
             function sendParticles(layerIdx) {
                 if (layerIdx >= nodes.length - 1) return;
-                
                 nodes[layerIdx].forEach(src => {
-                    // Send to a few random targets in next layer
                     const targets = nodes[layerIdx+1];
                     const dst = targets[Math.floor(Math.random() * targets.length)];
-                    
                     const p = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    p.setAttribute("r", "4");
-                    p.setAttribute("fill", "#A50012");
+                    p.setAttribute("r", "4"); p.setAttribute("fill", "#A50012");
                     svg.appendChild(p);
-                    
-                    const duration = 800;
                     const start = performance.now();
-                    
                     function anim(t) {
-                        let prog = Math.min((t - start) / duration, 1);
+                        let prog = Math.min((t - start) / 800, 1);
                         let cx = src.x + (dst.x - src.x) * prog;
                         let cy = src.y + (dst.y - src.y) * prog;
-                        p.setAttribute("cx", cx);
-                        p.setAttribute("cy", cy);
-                        if(prog < 1) requestAnimationFrame(anim);
-                        else if(p.parentNode) p.parentNode.removeChild(p);
+                        p.setAttribute("cx", cx); p.setAttribute("cy", cy);
+                        if(prog < 1) requestAnimationFrame(anim); else if(p.parentNode) p.parentNode.removeChild(p);
                     }
                     requestAnimationFrame(anim);
                 });
             }
 
             const sleep = ms => new Promise(r => setTimeout(r, ms));
-
             async function activateLayer(layerIdx, text) {
                 explText.textContent = text;
-                
-                // Highlight Nodes
-                nodes[layerIdx].forEach(n => {
-                    n.el.setAttribute("fill", "#A50012");
-                    n.el.setAttribute("stroke", "#A50012");
-                    n.el.setAttribute("r", "11");
-                });
-                
-                // Send Particles
+                nodes[layerIdx].forEach(n => { n.el.setAttribute("fill", "#A50012"); n.el.setAttribute("stroke", "#A50012"); });
                 sendParticles(layerIdx);
-
                 await sleep(800);
-
-                // Deactivate Nodes
-                nodes[layerIdx].forEach(n => {
-                    n.el.setAttribute("fill", "white");
-                    n.el.setAttribute("stroke", "#6B6B6B");
-                    n.el.setAttribute("r", "9");
-                });
+                nodes[layerIdx].forEach(n => { n.el.setAttribute("fill", "white"); n.el.setAttribute("stroke", "#6B6B6B"); });
             }
 
             async function runLoop() {
                 await sleep(500);
-                await activateLayer(0, "Input Layer: Receiving Raw Data");
-                await activateLayer(1, "Hidden Layer 1: Feature Extraction");
-                await activateLayer(2, "Hidden Layer 2: Pattern Matching");
-                await activateLayer(3, "Output Layer: Classification");
-                explText.textContent = "Prediction Result: 98% Confidence";
-                await sleep(2000);
+                await activateLayer(0, "Input Layer: Data");
+                await activateLayer(1, "Hidden 1: Features");
+                await activateLayer(2, "Hidden 2: Patterns");
+                await activateLayer(3, "Output: Result");
+                explText.textContent = "Done";
+                await sleep(1000);
                 runLoop();
             }
-
             runLoop();
         })();
 
-        // --- 6. TRAINING PROCESS SIMULATION (LOSS VISUALIZATION) ---
+        // --- 7. TRAINING SIMULATION ---
         (function initTrainingSim() {
             const container = document.getElementById('training-sim-container');
             const statusText = document.getElementById('training-phase-text');
             const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
             svg.setAttribute("width", "100%");
             svg.setAttribute("height", "100%");
+            svg.setAttribute("viewBox", "0 0 500 350");
             container.appendChild(svg);
 
-            const width = 500; 
-            const height = 350; 
-            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
-            
-            // Draw Loss Bar Area
-            const lossGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
-            lossGroup.setAttribute("transform", `translate(${width - 40}, 50)`);
-            
-            const lossBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            lossBg.setAttribute("width", "20");
-            lossBg.setAttribute("height", "200");
-            lossBg.setAttribute("fill", "#eee");
-            lossGroup.appendChild(lossBg);
-            
+            // Loss Bar
             const lossFill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
-            lossFill.setAttribute("width", "20");
-            lossFill.setAttribute("height", "0"); // Starts empty
-            lossFill.setAttribute("y", "200"); // Starts at bottom
-            lossFill.setAttribute("fill", "#FF9800");
-            lossFill.setAttribute("transition", "all 0.5s");
-            lossGroup.appendChild(lossFill);
-            
+            lossFill.setAttribute("width", "20"); lossFill.setAttribute("x", "460");
+            lossFill.setAttribute("fill", "#FF9800"); lossFill.setAttribute("transition", "all 0.5s");
+            svg.appendChild(lossFill);
             const lossLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
-            lossLabel.setAttribute("x", "10");
-            lossLabel.setAttribute("y", "220");
-            lossLabel.setAttribute("text-anchor", "middle");
-            lossLabel.setAttribute("font-size", "10");
-            lossLabel.textContent = "LOSS";
-            lossGroup.appendChild(lossLabel);
-            
-            svg.appendChild(lossGroup);
+            lossLabel.setAttribute("x", "470"); lossLabel.setAttribute("y", "250");
+            lossLabel.setAttribute("text-anchor", "middle"); lossLabel.textContent = "LOSS"; lossLabel.setAttribute("font-size","10");
+            svg.appendChild(lossLabel);
 
-            // Build Network
             const layers = [2, 3, 1];
             let nodes = [];
             let lines = [];
 
             layers.forEach((count, lIdx) => {
                 let layerNodes = [];
-                const x = 60 + (lIdx * (width - 140) / (layers.length - 1)); // Shift left to make room for loss bar
+                const x = 80 + (lIdx * (350) / (layers.length - 1));
                 const totalH = (count - 1) * 80; 
-                const yStart = (height - totalH) / 2;
+                const yStart = (350 - totalH) / 2;
                 for(let i=0; i<count; i++) {
-                    layerNodes.push({ x: x, y: yStart + i*80, id: `tr_l${lIdx}n${i}` });
+                    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    c.setAttribute("cx", x); c.setAttribute("cy", yStart + i*80);
+                    c.setAttribute("r", "12"); c.setAttribute("fill", "white"); c.setAttribute("stroke", "#222"); c.setAttribute("stroke-width", "3");
+                    svg.appendChild(c);
+                    layerNodes.push({ x: x, y: yStart + i*80, el: c });
                 }
                 nodes.push(layerNodes);
             });
 
             for(let l=0; l<nodes.length-1; l++) {
-                nodes[l].forEach(src => {
-                    nodes[l+1].forEach(dst => {
-                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-                        line.setAttribute("x1", src.x); line.setAttribute("y1", src.y);
-                        line.setAttribute("x2", dst.x); line.setAttribute("y2", dst.y);
-                        line.setAttribute("stroke", "#e2e8f0");
-                        line.setAttribute("stroke-width", "2");
-                        line.setAttribute("transition", "stroke-width 0.3s");
-                        svg.appendChild(line);
-                        lines.push({ el: line, src: src, dst: dst, layerIdx: l });
-                    });
-                });
+                nodes[l].forEach(src => nodes[l+1].forEach(dst => {
+                    const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                    line.setAttribute("x1", src.x); line.setAttribute("y1", src.y);
+                    line.setAttribute("x2", dst.x); line.setAttribute("y2", dst.y);
+                    line.setAttribute("stroke", "#e2e8f0"); line.setAttribute("stroke-width", "2");
+                    line.setAttribute("transition", "stroke-width 0.3s");
+                    svg.insertBefore(line, svg.firstChild);
+                    lines.push({ el: line });
+                }));
             }
 
-            const colors = ["#222", "#6B6B6B", "#A50012"];
-            nodes.forEach((layer, i) => {
-                layer.forEach(n => {
-                    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                    c.setAttribute("cx", n.x); c.setAttribute("cy", n.y);
-                    c.setAttribute("r", "12"); 
-                    c.setAttribute("fill", "white");
-                    c.setAttribute("stroke", colors[i]);
-                    c.setAttribute("stroke-width", "3");
-                    c.setAttribute("id", n.id);
-                    svg.appendChild(c);
-                });
-            });
-
-            // Animation Cycle
             function runTrainingCycle() {
                 statusText.textContent = "1. Forward Pass";
                 statusText.style.color = "#0055A4";
-                
-                // reset lines
-                lines.forEach(l => l.el.setAttribute("stroke-width", "2"));
-                lines.forEach(l => l.el.setAttribute("stroke", "#e2e8f0"));
+                lines.forEach(l => { l.el.setAttribute("stroke", "#e2e8f0"); l.el.setAttribute("stroke-width", "2"); });
 
-                // Visual: Blue signals moving forward
-                const promises = [];
-                
-                function sendP(src, dst) {
-                    return new Promise(res => {
-                        const p = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                        p.setAttribute("r", "6");
-                        p.setAttribute("fill", "#0055A4");
-                        svg.appendChild(p);
-                        const start = performance.now();
-                        const dur = 600;
-                        function f(t) {
-                            let pr = Math.min((t-start)/dur, 1);
-                            p.setAttribute("cx", src.x + (dst.x - src.x)*pr);
-                            p.setAttribute("cy", src.y + (dst.y - src.y)*pr);
-                            if(pr<1) requestAnimationFrame(f); else { if(p.parentNode) p.parentNode.removeChild(p); res(); }
-                        }
-                        requestAnimationFrame(f);
-                    });
-                }
-
-                let p1 = [];
-                nodes[0].forEach(s => nodes[1].forEach(d => p1.push(sendP(s,d))));
-                
-                Promise.all(p1).then(() => {
-                    let p2 = [];
-                    nodes[1].forEach(s => nodes[2].forEach(d => p2.push(sendP(s,d))));
-                    return Promise.all(p2);
-                }).then(() => {
-                    // PHASE 2: ERROR
-                    statusText.textContent = "2. Error Calculation (High Loss)";
+                // Visually simulate forward
+                setTimeout(() => {
+                    statusText.textContent = "2. Error (High)";
                     statusText.style.color = "#FF9800";
-                    
-                    const outNode = document.getElementById(nodes[2][0].id);
-                    outNode.setAttribute("fill", "#FF9800");
-                    
-                    // Grow Loss Bar
-                    lossFill.setAttribute("height", "150");
-                    lossFill.setAttribute("y", "50");
+                    nodes[2][0].el.setAttribute("fill", "#FF9800");
+                    lossFill.setAttribute("height", "150"); lossFill.setAttribute("y", "80");
                     
                     setTimeout(() => {
-                        outNode.setAttribute("fill", "white");
-                        
-                        // PHASE 3: BACKPROP
+                        nodes[2][0].el.setAttribute("fill", "white");
                         statusText.textContent = "3. Backward Pass";
                         statusText.style.color = "#A50012";
                         
-                        function sendBack(src, dst) {
-                             return new Promise(res => {
-                                const p = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-                                p.setAttribute("r", "6");
-                                p.setAttribute("fill", "#A50012");
-                                svg.appendChild(p);
-                                const start = performance.now();
-                                const dur = 600;
-                                function f(t) {
-                                    let pr = Math.min((t-start)/dur, 1);
-                                    p.setAttribute("cx", src.x + (dst.x - src.x)*pr);
-                                    p.setAttribute("cy", src.y + (dst.y - src.y)*pr);
-                                    if(pr<1) requestAnimationFrame(f); else { if(p.parentNode) p.parentNode.removeChild(p); res(); }
-                                }
-                                requestAnimationFrame(f);
-                            });
-                        }
-                        
-                        let b1 = [];
-                        nodes[2].forEach(s => nodes[1].forEach(d => b1.push(sendBack(s,d)))); // s is out, d is hidden
-                        
-                        Promise.all(b1).then(() => {
-                             let b2 = [];
-                             nodes[1].forEach(s => nodes[0].forEach(d => b2.push(sendBack(s,d))));
-                             return Promise.all(b2);
-                        }).then(() => {
-                            // PHASE 4: UPDATE
-                            statusText.textContent = "4. Update Weights (Reduce Loss)";
+                        setTimeout(() => {
+                            statusText.textContent = "4. Update Weights";
                             statusText.style.color = "#4CAF50";
-                            
-                            // Thicken lines to show weight update
-                            lines.forEach(l => {
-                                l.el.setAttribute("stroke", "#4CAF50");
-                                l.el.setAttribute("stroke-width", Math.random() > 0.5 ? "4" : "1"); // random new weights
-                            });
-                            
-                            // Shrink Loss Bar
-                            lossFill.setAttribute("height", "20");
-                            lossFill.setAttribute("y", "180");
-                            
+                            lines.forEach(l => { l.el.setAttribute("stroke", "#4CAF50"); l.el.setAttribute("stroke-width", Math.random()>0.5?"4":"1"); });
+                            lossFill.setAttribute("height", "20"); lossFill.setAttribute("y", "210");
                             setTimeout(runTrainingCycle, 1500);
-                        });
-
+                        }, 1000);
                     }, 1000);
-                });
+                }, 1000);
             }
-            setTimeout(runTrainingCycle, 1000);
+            runTrainingCycle();
         })();
     </script>
 </body>
