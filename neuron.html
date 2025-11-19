@@ -1,0 +1,882 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artificial Neural Networks - USJ</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700;800&family=Lato:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <!-- Reveal.js CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/theme/white.min.css">
+
+    <style>
+        /* --- 16:9 ASPECT RATIO CONTAINER --- */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #e2e8f0;
+        }
+
+        .reveal-viewport {
+            background: #e2e8f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* Force Reveal to fill container */
+        .reveal {
+            width: 100%; 
+            height: 100%;
+            font-family: 'Lato', sans-serif;
+            color: var(--usj-soft-black);
+        }
+
+        /* --- USJ BRANDING --- */
+        :root {
+            --usj-red: #A50012;
+            --usj-bright-red: #D6001C; 
+            --usj-light-gray: #F5F6FA;
+            --usj-med-gray: #6B6B6B;
+            --usj-soft-black: #222222;
+            --usj-white: #FFFFFF;
+            --usj-blue: #0055A4; /* For forward pass context */
+        }
+
+        /* Global Background SVG */
+        #global-network-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            pointer-events: none;
+            opacity: 0.08; 
+        }
+
+        /* Typography Overrides */
+        .reveal h1, .reveal h2, .reveal h3, .reveal h4 {
+            font-family: 'Montserrat', sans-serif;
+            color: var(--usj-red);
+            text-transform: none;
+        }
+
+        .reveal h1 { font-weight: 800; font-size: 2.5em; }
+        .reveal h2 { font-weight: 700; }
+        .reveal p { font-size: 0.8em; line-height: 1.6; }
+        
+        /* Slide Layouts */
+        .slide-content {
+            background: rgba(255, 255, 255, 0.98);
+            border-radius: 15px;
+            padding: 40px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            text-align: left;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        
+        .two-column {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 40px;
+            align-items: center;
+            height: 100%;
+        }
+
+        .image-wrapper {
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 350px;
+            overflow: hidden;
+            position: relative;
+            border: 1px solid #eee;
+        }
+
+        .image-wrapper img {
+            max-height: 100%;
+            max-width: 100%;
+            object-fit: contain;
+        }
+        
+        /* Simulation Containers */
+        #layered-sim-container, #training-sim-container {
+            width: 100%;
+            height: 100%;
+            min-height: 350px;
+        }
+
+        ul { margin-left: 0; padding-left: 1em; }
+        li { margin-bottom: 15px; }
+        li::marker { color: var(--usj-red); }
+
+        /* --- INTERACTIVE NEURON STYLES (Slide 3) --- */
+        .neuron-simulation-container {
+            display: grid;
+            grid-template-columns: 250px 1fr 250px;
+            gap: 15px;
+            background: white;
+            border-radius: 12px;
+            padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            font-size: 0.6em; 
+        }
+
+        .controls-panel, .graph-panel {
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .control-group {
+            margin-bottom: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 5px;
+        }
+
+        .control-group label {
+            display: flex;
+            justify-content: space-between;
+            font-weight: 700;
+            color: var(--usj-soft-black);
+        }
+
+        .control-group input[type=range] {
+            width: 100%;
+            accent-color: var(--usj-red);
+        }
+
+        .output-display {
+            font-size: 2em;
+            font-weight: 800;
+            color: var(--usj-red);
+            margin-top: 10px;
+            text-align: center;
+        }
+
+        .reveal input[type=range] { pointer-events: auto; }
+        
+        /* Graph Styles */
+        #graphSvg {
+            overflow: visible;
+        }
+        
+        #graph-dot {
+            fill: var(--usj-soft-black);
+            stroke: white;
+            stroke-width: 3px;
+            filter: drop-shadow(0px 2px 3px rgba(0,0,0,0.3));
+        }
+
+        /* Simulation Text Styles */
+        .sim-text-overlay {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 700;
+            font-size: 18px;
+            fill: var(--usj-red);
+            text-anchor: middle;
+        }
+        
+        .sim-subtext {
+            font-family: 'Lato', sans-serif;
+            font-size: 14px;
+            fill: var(--usj-med-gray);
+            text-anchor: middle;
+        }
+
+        /* --- FULLSCREEN PLUGIN STYLES --- */
+        .usj-fs-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000; 
+            background-color: var(--usj-red);
+            color: white;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .usj-fs-btn:hover {
+            background-color: var(--usj-bright-red);
+            transform: scale(1.1);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="reveal-viewport">
+        <!-- 0. Background Animation -->
+        <div id="global-network-bg"></div>
+
+        <div class="reveal">
+            <div class="slides">
+
+                <!-- Slide 1: Title -->
+                <section>
+                    <div class="slide-content" style="text-align: center; border-top: 5px solid var(--usj-red);">
+                        <h1>Artificial Neural<br>Networks</h1>
+                        <p style="font-size: 1.2em; color: var(--usj-med-gray);">A Conceptual and Practical Introduction</p>
+                        <div style="margin-top: 50px; font-weight: 700; color: var(--usj-red); letter-spacing: 2px;">SAN JORGE UNIVERSITY</div>
+                    </div>
+                </section>
+
+                <!-- Slide 2: Biological Inspiration -->
+                <section>
+                    <div class="slide-content">
+                        <h2>Biological Inspiration</h2>
+                        <div class="two-column">
+                            <div>
+                                <p>Artificial Neural Networks (ANNs) are computational models inspired by the central nervous system.</p>
+                                <ul>
+                                    <li><strong>The Neuron:</strong> Basic processing unit.</li>
+                                    <li><strong>Synapse:</strong> Weighted connections transmitting signals.</li>
+                                    <li><strong>Learning:</strong> Adjusting connection strengths based on experience.</li>
+                                </ul>
+                            </div>
+                            <div class="image-wrapper">
+                                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/b/b5/Neuron.svg/1024px-Neuron.svg.png" alt="Biological Neuron Structure">
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Slide 3: Interactive Artificial Neuron -->
+                <section data-prevent-swipe>
+                    <div class="slide-content">
+                        <h3 style="margin-bottom: 20px;">The Artificial Neuron Model</h3>
+                        <div class="neuron-simulation-container">
+                            <!-- Left: Controls -->
+                            <div class="controls-panel">
+                                <h4>Inputs (x)</h4>
+                                <div class="control-group"><label>x₁<span id="val-x1">0.5</span></label><input type="range" id="in-x1" min="0" max="1" step="0.1" value="0.5"></div>
+                                <div class="control-group"><label>x₂<span id="val-x2">0.2</span></label><input type="range" id="in-x2" min="0" max="1" step="0.1" value="0.2"></div>
+                                
+                                <h4 style="margin-top:10px;">Weights (w)</h4>
+                                <div class="control-group"><label>w₁<span id="val-w1">0.5</span></label><input type="range" id="in-w1" min="-1" max="1" step="0.1" value="0.5"></div>
+                                <div class="control-group"><label>w₂<span id="val-w2">-0.4</span></label><input type="range" id="in-w2" min="-1" max="1" step="0.1" value="-0.4"></div>
+                                <div class="control-group"><label>Bias<span id="val-b">0.1</span></label><input type="range" id="in-b" min="-1" max="1" step="0.1" value="0.1"></div>
+                            </div>
+
+                            <!-- Center: Visualizer SVG -->
+                            <div style="display: flex; align-items: center; justify-content: center;">
+                                <svg id="neuronSvg" viewBox="0 0 300 200" style="width: 100%; height: 100%;">
+                                    <line id="line-1" x1="50" y1="50" x2="150" y2="100" stroke="#6B6B6B" stroke-width="2" />
+                                    <line id="line-2" x1="50" y1="150" x2="150" y2="100" stroke="#6B6B6B" stroke-width="2" />
+                                    <circle cx="50" cy="50" r="15" fill="#F5F6FA" stroke="#222" stroke-width="2"/><text x="45" y="55" font-size="12">x₁</text>
+                                    <circle cx="50" cy="150" r="15" fill="#F5F6FA" stroke="#222" stroke-width="2"/><text x="45" y="155" font-size="12">x₂</text>
+                                    <circle cx="150" cy="100" r="30" fill="#A50012" /><text x="142" y="105" font-size="18" fill="white">∑</text>
+                                    <line x1="180" y1="100" x2="250" y2="100" stroke="#222" stroke-width="2" marker-end="url(#arrowhead)" />
+                                </svg>
+                            </div>
+
+                            <!-- Right: Output Graph -->
+                            <div class="graph-panel">
+                                <h4>Activation (Sigmoid)</h4>
+                                <svg id="graphSvg" viewBox="0 0 150 80" style="width:100%; height:80px; background: white; border:1px solid #ccc;">
+                                    <!-- Improved Grid -->
+                                    <defs>
+                                        <pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse">
+                                            <path d="M 10 0 L 0 0 0 10" fill="none" stroke="#eee" stroke-width="0.5"/>
+                                        </pattern>
+                                    </defs>
+                                    <rect width="100%" height="100%" fill="url(#smallGrid)" />
+                                    
+                                    <!-- Axes -->
+                                    <line x1="75" y1="0" x2="75" y2="80" stroke="#bbb" stroke-width="1" /> <!-- Y Axis -->
+                                    <line x1="0" y1="40" x2="150" y2="40" stroke="#bbb" stroke-width="1" /> <!-- X Axis -->
+                                    
+                                    <!-- Limits -->
+                                    <text x="5" y="10" font-size="8" fill="#999">1</text>
+                                    <text x="5" y="75" font-size="8" fill="#999">0</text>
+                                    
+                                    <!-- Path constructed in JS, but strictly styled inline here for visibility -->
+                                    <path id="sigmoid-curve" fill="none" stroke="#D6001C" stroke-width="4" stroke-linecap="round" />
+                                    <circle id="graph-dot" cx="75" cy="40" r="6" />
+                                </svg>
+                                <div style="text-align:center; margin-top:10px;">
+                                    <small>Sum (z): <span id="display-sum">0.00</span></small>
+                                    <div class="output-display" id="display-output">0.50</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Slide 4: Layered Architecture -->
+                <section>
+                    <div class="slide-content">
+                        <h2>Layered Architecture</h2>
+                        <div class="two-column">
+                            <div>
+                                <h3>Deep Structure</h3>
+                                <p>A typical neural network is organized into distinct layers:</p>
+                                <ul>
+                                    <li><strong>Input Layer:</strong> Receives raw data.</li>
+                                    <li><strong>Hidden Layers:</strong> Perform complex feature extraction.</li>
+                                    <li><strong>Output Layer:</strong> Produces final prediction.</li>
+                                </ul>
+                                <p style="margin-top:20px; color:var(--usj-red); font-weight:bold;">Live Data Flow Simulation &rarr;</p>
+                            </div>
+                            <div class="image-wrapper" style="padding: 0; background: #fcfcfc;">
+                                <div id="layered-sim-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Slide 5: Learning Process -->
+                <section>
+                    <div class="slide-content">
+                        <h2>The Learning Process</h2>
+                        <div class="two-column">
+                            <div>
+                                <h3>Backpropagation</h3>
+                                <p>"Training" is an iterative process of error minimization.</p>
+                                <ol>
+                                    <li><strong>Forward Pass:</strong> Make a prediction.</li>
+                                    <li><strong>Error Calculation:</strong> Compare with actual value.</li>
+                                    <li><strong>Backward Pass:</strong> Propagate error back.</li>
+                                    <li><strong>Update:</strong> Adjust weights.</li>
+                                </ol>
+                                <div id="training-phase-text" style="margin-top:20px; font-weight:bold; color:var(--usj-red); font-size:1.2em;">Ready</div>
+                            </div>
+                            <div class="image-wrapper" style="padding: 0; background: #fcfcfc;">
+                                <div id="training-sim-container"></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Reveal.js Script -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/5.0.4/reveal.js"></script>
+    
+    <script>
+        // --- 1. CUSTOM FULLSCREEN PLUGIN ---
+        const UsjFullscreenPlugin = {
+            id: 'usj-fullscreen',
+            init: (deck) => {
+                const fsBtn = document.createElement('button');
+                fsBtn.className = 'usj-fs-btn';
+                fsBtn.title = 'Toggle Fullscreen';
+                fsBtn.innerHTML = '<i class="fa-solid fa-expand" id="fs-icon"></i>';
+                document.body.appendChild(fsBtn);
+                const fsIcon = fsBtn.querySelector('i');
+
+                fsBtn.addEventListener('click', () => {
+                    if (!document.fullscreenElement) {
+                        if(document.documentElement.requestFullscreen) document.documentElement.requestFullscreen();
+                    } else {
+                        if(document.exitFullscreen) document.exitFullscreen();
+                    }
+                });
+
+                document.addEventListener('fullscreenchange', () => {
+                    if (document.fullscreenElement) {
+                        fsIcon.classList.remove('fa-expand');
+                        fsIcon.classList.add('fa-compress');
+                    } else {
+                        fsIcon.classList.remove('fa-compress');
+                        fsIcon.classList.add('fa-expand');
+                    }
+                });
+            }
+        };
+
+        // --- 2. REVEAL.JS INIT ---
+        Reveal.initialize({
+            width: 1280,
+            height: 720,
+            margin: 0.1,
+            minScale: 0.2,
+            maxScale: 2.0,
+            controls: true,
+            progress: true,
+            center: true,
+            hash: false,
+            history: false,
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            plugins: [ UsjFullscreenPlugin ]
+        });
+
+        // --- 3. GLOBAL BACKGROUND ---
+        (function initBackground() {
+            const container = document.getElementById('global-network-bg');
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            container.appendChild(svg);
+
+            const config = { layers: [4, 5, 5, 3], nodeColor: '#A50012' };
+            let nodes = [];
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+
+            config.layers.forEach((count, lIdx) => {
+                let layerNodes = [];
+                const x = (width * 0.05) + (width * 0.9) * (lIdx / (config.layers.length - 1));
+                const spacing = height / (count + 1);
+                for(let i=0; i<count; i++) {
+                    const n = { x: x, y: spacing * (i + 1) };
+                    layerNodes.push(n);
+                    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    c.setAttribute("cx", n.x); c.setAttribute("cy", n.y);
+                    c.setAttribute("r", "3"); c.setAttribute("fill", config.nodeColor);
+                    svg.appendChild(c);
+                }
+                nodes.push(layerNodes);
+            });
+
+            for(let l=0; l<nodes.length-1; l++) {
+                nodes[l].forEach(src => {
+                    nodes[l+1].forEach(dst => {
+                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        line.setAttribute("x1", src.x); line.setAttribute("y1", src.y);
+                        line.setAttribute("x2", dst.x); line.setAttribute("y2", dst.y);
+                        line.setAttribute("stroke", "#CCCCCC");
+                        line.setAttribute("stroke-width", "0.5");
+                        svg.appendChild(line);
+                    });
+                });
+            }
+        })();
+
+        // --- 4. INTERACTIVE NEURON (FIXED VISIBILITY) ---
+        (function initInteractive() {
+            const inputs = ['x1', 'x2'].map(id => ({
+                slider: document.getElementById('in-'+id),
+                label: document.getElementById('val-'+id)
+            }));
+            const weights = ['w1', 'w2'].map(id => ({
+                slider: document.getElementById('in-'+id),
+                label: document.getElementById('val-'+id),
+                line: document.getElementById('line-'+id.charAt(1))
+            }));
+            const bias = { slider: document.getElementById('in-b'), label: document.getElementById('val-b') };
+            const displaySum = document.getElementById('display-sum');
+            const displayOut = document.getElementById('display-output');
+            const dot = document.getElementById('graph-dot');
+            const curve = document.getElementById('sigmoid-curve');
+
+            function sigmoid(z) { return 1 / (1 + Math.exp(-z)); }
+
+            // Robust Path Generation
+            let d = "M 0 ";
+            for(let i=0; i<=150; i+=2) { // Higher resolution
+                let x = (i - 75) / 10; 
+                let y = sigmoid(x);
+                // SVG coords: height 80. y=0 is top. 
+                // We want y=0 (val) to be bottom (80). y=1 (val) to be top (0).
+                // Actually sigmoid(0)=0.5 should be at 40.
+                let svgY = 80 - (y * 80); // Map 0->80, 1->0
+                if(i===0) d = `M ${i} ${svgY} `;
+                else d += `L ${i} ${svgY} `;
+            }
+            curve.setAttribute("d", d);
+            // Explicitly set style again via JS to be safe
+            curve.style.stroke = "#D6001C";
+            curve.style.strokeWidth = "4px";
+
+            function update() {
+                let sum = 0;
+                inputs.forEach((inp, i) => {
+                    const x = parseFloat(inp.slider.value);
+                    const w = parseFloat(weights[i].slider.value);
+                    inp.label.textContent = x.toFixed(1);
+                    weights[i].label.textContent = w.toFixed(1);
+                    sum += x * w;
+                    weights[i].line.setAttribute("stroke-width", 1 + Math.abs(w)*4);
+                    weights[i].line.setAttribute("stroke", w>=0 ? "#333" : "#A50012");
+                    weights[i].line.setAttribute("opacity", 0.3 + x*0.7);
+                });
+
+                const b = parseFloat(bias.slider.value);
+                bias.label.textContent = b.toFixed(1);
+                sum += b;
+                const out = sigmoid(sum);
+                displaySum.textContent = sum.toFixed(2);
+                displayOut.textContent = out.toFixed(2);
+                let cSum = Math.max(-7.5, Math.min(7.5, sum)); 
+                dot.setAttribute("cx", 75 + cSum*10);
+                dot.setAttribute("cy", 80 - (out*80));
+            }
+
+            [...inputs, ...weights].forEach(o => o.slider.addEventListener('input', update));
+            bias.slider.addEventListener('input', update);
+            update(); 
+        })();
+
+        // --- 5. ADVANCED LAYERED SIMULATION (DATA FLOW) ---
+        (function initLayeredSim() {
+            const container = document.getElementById('layered-sim-container');
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            container.appendChild(svg);
+            
+            const width = 500; 
+            const height = 350; 
+            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+            
+            const layers = [3, 5, 5, 2]; 
+            let nodes = [];
+            let lines = [];
+            
+            layers.forEach((count, lIdx) => {
+                let layerNodes = [];
+                const x = 60 + (lIdx * (width - 120) / (layers.length - 1));
+                const totalH = (count - 1) * 45; 
+                const yStart = (height - totalH) / 2;
+                
+                for(let i=0; i<count; i++) {
+                    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    const cy = yStart + i*45;
+                    c.setAttribute("cx", x); c.setAttribute("cy", cy);
+                    c.setAttribute("r", "9"); 
+                    c.setAttribute("fill", "white");
+                    c.setAttribute("stroke", "#6B6B6B");
+                    c.setAttribute("stroke-width", "2");
+                    c.setAttribute("transition", "all 0.3s");
+                    svg.appendChild(c);
+                    layerNodes.push({ el: c, x: x, y: cy });
+                }
+                nodes.push(layerNodes);
+            });
+
+            for(let l=0; l<nodes.length-1; l++) {
+                let layerLines = [];
+                nodes[l].forEach(src => {
+                    nodes[l+1].forEach(dst => {
+                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        line.setAttribute("x1", src.x); line.setAttribute("y1", src.y);
+                        line.setAttribute("x2", dst.x); line.setAttribute("y2", dst.y);
+                        const opacity = 0.1 + Math.random() * 0.4;
+                        line.setAttribute("stroke", "#A50012");
+                        line.setAttribute("stroke-width", "1.5");
+                        line.setAttribute("opacity", opacity);
+                        svg.insertBefore(line, svg.firstChild);
+                        layerLines.push(line);
+                    });
+                });
+                lines.push(layerLines);
+            }
+
+            const labels = ["Input", "Hidden 1", "Hidden 2", "Output"];
+            labels.forEach((txt, i) => {
+                const t = document.createElementNS("http://www.w3.org/2000/svg", "text");
+                t.setAttribute("x", 60 + (i * (width - 120) / (layers.length - 1)));
+                t.setAttribute("y", height - 20);
+                t.setAttribute("text-anchor", "middle");
+                t.setAttribute("font-size", "14");
+                t.setAttribute("font-family", "Lato");
+                t.setAttribute("fill", "#6B6B6B");
+                t.textContent = txt;
+                svg.appendChild(t);
+            });
+
+            const explText = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            explText.setAttribute("x", width/2);
+            explText.setAttribute("y", 30);
+            explText.setAttribute("class", "sim-text-overlay");
+            explText.textContent = "Initializing...";
+            svg.appendChild(explText);
+
+            // Particle Animation Function
+            function sendParticles(layerIdx) {
+                if (layerIdx >= nodes.length - 1) return;
+                
+                nodes[layerIdx].forEach(src => {
+                    // Send to a few random targets in next layer
+                    const targets = nodes[layerIdx+1];
+                    const dst = targets[Math.floor(Math.random() * targets.length)];
+                    
+                    const p = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    p.setAttribute("r", "4");
+                    p.setAttribute("fill", "#A50012");
+                    svg.appendChild(p);
+                    
+                    const duration = 800;
+                    const start = performance.now();
+                    
+                    function anim(t) {
+                        let prog = Math.min((t - start) / duration, 1);
+                        let cx = src.x + (dst.x - src.x) * prog;
+                        let cy = src.y + (dst.y - src.y) * prog;
+                        p.setAttribute("cx", cx);
+                        p.setAttribute("cy", cy);
+                        if(prog < 1) requestAnimationFrame(anim);
+                        else if(p.parentNode) p.parentNode.removeChild(p);
+                    }
+                    requestAnimationFrame(anim);
+                });
+            }
+
+            const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+            async function activateLayer(layerIdx, text) {
+                explText.textContent = text;
+                
+                // Highlight Nodes
+                nodes[layerIdx].forEach(n => {
+                    n.el.setAttribute("fill", "#A50012");
+                    n.el.setAttribute("stroke", "#A50012");
+                    n.el.setAttribute("r", "11");
+                });
+                
+                // Send Particles
+                sendParticles(layerIdx);
+
+                await sleep(800);
+
+                // Deactivate Nodes
+                nodes[layerIdx].forEach(n => {
+                    n.el.setAttribute("fill", "white");
+                    n.el.setAttribute("stroke", "#6B6B6B");
+                    n.el.setAttribute("r", "9");
+                });
+            }
+
+            async function runLoop() {
+                await sleep(500);
+                await activateLayer(0, "Input Layer: Receiving Raw Data");
+                await activateLayer(1, "Hidden Layer 1: Feature Extraction");
+                await activateLayer(2, "Hidden Layer 2: Pattern Matching");
+                await activateLayer(3, "Output Layer: Classification");
+                explText.textContent = "Prediction Result: 98% Confidence";
+                await sleep(2000);
+                runLoop();
+            }
+
+            runLoop();
+        })();
+
+        // --- 6. TRAINING PROCESS SIMULATION (LOSS VISUALIZATION) ---
+        (function initTrainingSim() {
+            const container = document.getElementById('training-sim-container');
+            const statusText = document.getElementById('training-phase-text');
+            const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+            svg.setAttribute("width", "100%");
+            svg.setAttribute("height", "100%");
+            container.appendChild(svg);
+
+            const width = 500; 
+            const height = 350; 
+            svg.setAttribute("viewBox", `0 0 ${width} ${height}`);
+            
+            // Draw Loss Bar Area
+            const lossGroup = document.createElementNS("http://www.w3.org/2000/svg", "g");
+            lossGroup.setAttribute("transform", `translate(${width - 40}, 50)`);
+            
+            const lossBg = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            lossBg.setAttribute("width", "20");
+            lossBg.setAttribute("height", "200");
+            lossBg.setAttribute("fill", "#eee");
+            lossGroup.appendChild(lossBg);
+            
+            const lossFill = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+            lossFill.setAttribute("width", "20");
+            lossFill.setAttribute("height", "0"); // Starts empty
+            lossFill.setAttribute("y", "200"); // Starts at bottom
+            lossFill.setAttribute("fill", "#FF9800");
+            lossFill.setAttribute("transition", "all 0.5s");
+            lossGroup.appendChild(lossFill);
+            
+            const lossLabel = document.createElementNS("http://www.w3.org/2000/svg", "text");
+            lossLabel.setAttribute("x", "10");
+            lossLabel.setAttribute("y", "220");
+            lossLabel.setAttribute("text-anchor", "middle");
+            lossLabel.setAttribute("font-size", "10");
+            lossLabel.textContent = "LOSS";
+            lossGroup.appendChild(lossLabel);
+            
+            svg.appendChild(lossGroup);
+
+            // Build Network
+            const layers = [2, 3, 1];
+            let nodes = [];
+            let lines = [];
+
+            layers.forEach((count, lIdx) => {
+                let layerNodes = [];
+                const x = 60 + (lIdx * (width - 140) / (layers.length - 1)); // Shift left to make room for loss bar
+                const totalH = (count - 1) * 80; 
+                const yStart = (height - totalH) / 2;
+                for(let i=0; i<count; i++) {
+                    layerNodes.push({ x: x, y: yStart + i*80, id: `tr_l${lIdx}n${i}` });
+                }
+                nodes.push(layerNodes);
+            });
+
+            for(let l=0; l<nodes.length-1; l++) {
+                nodes[l].forEach(src => {
+                    nodes[l+1].forEach(dst => {
+                        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+                        line.setAttribute("x1", src.x); line.setAttribute("y1", src.y);
+                        line.setAttribute("x2", dst.x); line.setAttribute("y2", dst.y);
+                        line.setAttribute("stroke", "#e2e8f0");
+                        line.setAttribute("stroke-width", "2");
+                        line.setAttribute("transition", "stroke-width 0.3s");
+                        svg.appendChild(line);
+                        lines.push({ el: line, src: src, dst: dst, layerIdx: l });
+                    });
+                });
+            }
+
+            const colors = ["#222", "#6B6B6B", "#A50012"];
+            nodes.forEach((layer, i) => {
+                layer.forEach(n => {
+                    const c = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                    c.setAttribute("cx", n.x); c.setAttribute("cy", n.y);
+                    c.setAttribute("r", "12"); 
+                    c.setAttribute("fill", "white");
+                    c.setAttribute("stroke", colors[i]);
+                    c.setAttribute("stroke-width", "3");
+                    c.setAttribute("id", n.id);
+                    svg.appendChild(c);
+                });
+            });
+
+            // Animation Cycle
+            function runTrainingCycle() {
+                statusText.textContent = "1. Forward Pass";
+                statusText.style.color = "#0055A4";
+                
+                // reset lines
+                lines.forEach(l => l.el.setAttribute("stroke-width", "2"));
+                lines.forEach(l => l.el.setAttribute("stroke", "#e2e8f0"));
+
+                // Visual: Blue signals moving forward
+                const promises = [];
+                
+                function sendP(src, dst) {
+                    return new Promise(res => {
+                        const p = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                        p.setAttribute("r", "6");
+                        p.setAttribute("fill", "#0055A4");
+                        svg.appendChild(p);
+                        const start = performance.now();
+                        const dur = 600;
+                        function f(t) {
+                            let pr = Math.min((t-start)/dur, 1);
+                            p.setAttribute("cx", src.x + (dst.x - src.x)*pr);
+                            p.setAttribute("cy", src.y + (dst.y - src.y)*pr);
+                            if(pr<1) requestAnimationFrame(f); else { if(p.parentNode) p.parentNode.removeChild(p); res(); }
+                        }
+                        requestAnimationFrame(f);
+                    });
+                }
+
+                let p1 = [];
+                nodes[0].forEach(s => nodes[1].forEach(d => p1.push(sendP(s,d))));
+                
+                Promise.all(p1).then(() => {
+                    let p2 = [];
+                    nodes[1].forEach(s => nodes[2].forEach(d => p2.push(sendP(s,d))));
+                    return Promise.all(p2);
+                }).then(() => {
+                    // PHASE 2: ERROR
+                    statusText.textContent = "2. Error Calculation (High Loss)";
+                    statusText.style.color = "#FF9800";
+                    
+                    const outNode = document.getElementById(nodes[2][0].id);
+                    outNode.setAttribute("fill", "#FF9800");
+                    
+                    // Grow Loss Bar
+                    lossFill.setAttribute("height", "150");
+                    lossFill.setAttribute("y", "50");
+                    
+                    setTimeout(() => {
+                        outNode.setAttribute("fill", "white");
+                        
+                        // PHASE 3: BACKPROP
+                        statusText.textContent = "3. Backward Pass";
+                        statusText.style.color = "#A50012";
+                        
+                        function sendBack(src, dst) {
+                             return new Promise(res => {
+                                const p = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+                                p.setAttribute("r", "6");
+                                p.setAttribute("fill", "#A50012");
+                                svg.appendChild(p);
+                                const start = performance.now();
+                                const dur = 600;
+                                function f(t) {
+                                    let pr = Math.min((t-start)/dur, 1);
+                                    p.setAttribute("cx", src.x + (dst.x - src.x)*pr);
+                                    p.setAttribute("cy", src.y + (dst.y - src.y)*pr);
+                                    if(pr<1) requestAnimationFrame(f); else { if(p.parentNode) p.parentNode.removeChild(p); res(); }
+                                }
+                                requestAnimationFrame(f);
+                            });
+                        }
+                        
+                        let b1 = [];
+                        nodes[2].forEach(s => nodes[1].forEach(d => b1.push(sendBack(s,d)))); // s is out, d is hidden
+                        
+                        Promise.all(b1).then(() => {
+                             let b2 = [];
+                             nodes[1].forEach(s => nodes[0].forEach(d => b2.push(sendBack(s,d))));
+                             return Promise.all(b2);
+                        }).then(() => {
+                            // PHASE 4: UPDATE
+                            statusText.textContent = "4. Update Weights (Reduce Loss)";
+                            statusText.style.color = "#4CAF50";
+                            
+                            // Thicken lines to show weight update
+                            lines.forEach(l => {
+                                l.el.setAttribute("stroke", "#4CAF50");
+                                l.el.setAttribute("stroke-width", Math.random() > 0.5 ? "4" : "1"); // random new weights
+                            });
+                            
+                            // Shrink Loss Bar
+                            lossFill.setAttribute("height", "20");
+                            lossFill.setAttribute("y", "180");
+                            
+                            setTimeout(runTrainingCycle, 1500);
+                        });
+
+                    }, 1000);
+                });
+            }
+            setTimeout(runTrainingCycle, 1000);
+        })();
+    </script>
+</body>
+</html>
